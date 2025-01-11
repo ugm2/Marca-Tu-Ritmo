@@ -556,6 +556,7 @@ export default function LogsScreen() {
               ))}
             </View>
           )}
+          <View style={styles.bottomSpacer} />
         </ScrollView>
 
         <Modal
@@ -596,7 +597,6 @@ export default function LogsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingBottom: 120,
   },
   scrollView: {
     flex: 1,
@@ -899,5 +899,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 12,
+  },
+  bottomSpacer: {
+    height: 100,
   },
 }); 

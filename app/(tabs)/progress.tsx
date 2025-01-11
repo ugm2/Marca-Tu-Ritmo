@@ -177,7 +177,7 @@ export default function ProgressScreen() {
         </ThemedView>
 
         {exerciseProgress.map((exercise, index) => (
-          <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground, marginBottom: 100}]}>
+          <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground}]}>
             <ThemedText style={styles.cardTitle}>{exercise.name} Progress</ThemedText>
             <View style={styles.chartWrapper}>
               <LineChart
@@ -215,6 +215,7 @@ export default function ProgressScreen() {
             </ThemedText>
           </ThemedView>
         ))}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -280,6 +281,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
     padding: 20,
+  },
+  bottomSpacer: {
+    height: 100,
   },
   weeklyActivityContainer: {
     flexDirection: 'row',
