@@ -6,6 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { SettingsProvider } from '../contexts/SettingsContext';
+import { PortalProvider } from '@gorhom/portal';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -41,20 +43,26 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <SettingsProvider>
+      <RootLayoutNav />
+    </SettingsProvider>
+  );
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <SettingsProvider>
+    <PortalProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="add-workout" options={{ presentation: 'modal' }} />
-        </Stack>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="add-workout" options={{ presentation: 'modal' }} />
+          </Stack>
+        </GestureHandlerRootView>
       </ThemeProvider>
-    </SettingsProvider>
+    </PortalProvider>
   );
 }

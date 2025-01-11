@@ -298,4 +298,15 @@ export const deleteExercise = async (id: number): Promise<void> => {
     console.error('Error in deleteExercise:', error);
     throw error;
   }
-}; 
+};
+
+export default {
+  getAllLogs,
+  initDatabase,
+  updateWOD,
+  updateExercise,
+  addWOD,
+  addExercise,
+  deleteWOD,
+  deleteExercise
+};

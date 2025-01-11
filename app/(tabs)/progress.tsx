@@ -62,23 +62,6 @@ export default function ProgressScreen() {
     }, [loadLogs])
   );
 
-  const getWeeklyWorkoutData = () => {
-    const today = new Date();
-    const start = startOfWeek(today);
-    const end = endOfWeek(today);
-    const days = eachDayOfInterval({ start, end });
-    
-    const labels = days.map(day => format(day, 'EEE'));
-    const data = days.map(day => {
-      return logs.filter(log => {
-        const logDate = new Date(log.date);
-        return format(logDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
-      }).length;
-    });
-
-    return { labels, data };
-  };
-
   const getWorkoutTypeDistribution = () => {
     const wodCount = logs.filter(log => log.type === 'wod').length;
     const exerciseCount = logs.filter(log => log.type === 'exercise').length;
@@ -99,7 +82,7 @@ export default function ProgressScreen() {
     const exerciseLogs = logs.filter(log => log.type === 'exercise') as Exercise[];
     const exerciseNames = [...new Set(exerciseLogs.map(log => log.name))];
     
-    return exerciseNames.slice(0, 5).map(name => {
+    return exerciseNames.map(name => {
       const exerciseData = exerciseLogs
         .filter(log => log.name === name)
         .map(log => ({
@@ -108,12 +91,14 @@ export default function ProgressScreen() {
         }))
         .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      const weights = exerciseData.slice(-7).map(d => d.weight);
       return {
         name,
-        data: weights.length > 0 ? weights : [0]
+        data: exerciseData.map(d => d.weight),
+        dates: exerciseData.map(d => format(d.date, 'MMM d'))
       };
-    });
+    }).filter(exercise => exercise.data.length > 0)
+      .sort((a, b) => b.data.length - a.data.length)
+      .slice(0, 5); // Show top 5 most tracked exercises
   };
 
   const chartConfig = {
@@ -145,7 +130,6 @@ export default function ProgressScreen() {
     );
   }
 
-  const weeklyData = getWeeklyWorkoutData();
   const typeDistribution = getWorkoutTypeDistribution();
   const exerciseProgress = getExerciseProgressData();
 
@@ -157,50 +141,24 @@ export default function ProgressScreen() {
         </View>
 
         <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-          <ThemedText style={styles.cardTitle}>Weekly Activity</ThemedText>
-          <View style={styles.weeklyActivityContainer}>
-            {weeklyData.data.map((count, index) => (
-              <View key={index} style={styles.dayContainer}>
-                <ThemedText style={styles.dayLabel}>{weeklyData.labels[index]}</ThemedText>
-                <View style={[
-                  styles.activityIndicator,
-                  {
-                    backgroundColor: colors.primary + '20',
-                    height: Math.max(30, count * 40),
-                  }
-                ]}>
-                  <View style={[
-                    styles.activityFill,
-                    {
-                      backgroundColor: colors.primary,
-                      height: count > 0 ? '100%' : 0,
-                      opacity: Math.min(0.3 + (count * 0.2), 1),
-                    }
-                  ]} />
-                </View>
-                <ThemedText style={styles.countLabel}>{count}</ThemedText>
-              </View>
-            ))}
-          </View>
-        </ThemedView>
-
-        <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-          <ThemedText style={styles.cardTitle}>Workout Type Distribution</ThemedText>
+          <ThemedText style={styles.cardTitle}>All-Time Workout Distribution</ThemedText>
           {logs.length > 0 ? (
             <View style={styles.chartWrapper}>
               <PieChart
                 data={[
                   {
-                    name: 'WODs',
+                    name: `% WODs`,
                     population: typeDistribution.data[0],
                     color: colors.primary,
                     legendFontColor: colors.text,
+                    legendFontSize: 12,
                   },
                   {
-                    name: 'Exercises',
+                    name: `% Exercises`,
                     population: typeDistribution.data[1],
                     color: colors.secondary,
                     legendFontColor: colors.text,
+                    legendFontSize: 12,
                   }
                 ]}
                 width={screenWidth - 48}
@@ -219,12 +177,12 @@ export default function ProgressScreen() {
         </ThemedView>
 
         {exerciseProgress.map((exercise, index) => (
-          <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+          <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground, marginBottom: 100}]}>
             <ThemedText style={styles.cardTitle}>{exercise.name} Progress</ThemedText>
             <View style={styles.chartWrapper}>
               <LineChart
                 data={{
-                  labels: Array(exercise.data.length).fill(''),
+                  labels: exercise.dates,
                   datasets: [{ 
                     data: exercise.data,
                     color: (opacity = 1) => colors.primary + Math.round(opacity * 255).toString(16).padStart(2, '0'),
@@ -245,7 +203,7 @@ export default function ProgressScreen() {
                 withDots
                 withInnerLines={false}
                 withOuterLines={false}
-                withVerticalLabels={false}
+                withVerticalLabels
                 withHorizontalLabels
                 withShadow={false}
                 yAxisLabel=""
@@ -253,7 +211,7 @@ export default function ProgressScreen() {
               />
             </View>
             <ThemedText style={styles.chartLabel}>
-              Last {exercise.data.length} sessions
+              All {exercise.data.length} sessions
             </ThemedText>
           </ThemedView>
         ))}
@@ -355,5 +313,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     fontWeight: '600',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 8,
+  },
+  legendText: {
+    fontSize: 14,
+    opacity: 0.8,
   },
 }); 

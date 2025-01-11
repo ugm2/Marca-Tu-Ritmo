@@ -13,7 +13,7 @@ import { useEffect } from 'react';
 import { router } from 'expo-router';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TAB_BAR_WIDTH = 320;
+const TAB_BAR_WIDTH = 350;
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -59,7 +59,7 @@ export default function TabLayout() {
         <Animated.View style={[styles.iconWrapper, animatedStyle]}>
           <Ionicons 
             name={name} 
-            size={20} 
+            size={28}
             color={focused ? '#FFFFFF' : colors.tabIconDefault}
           />
         </Animated.View>
@@ -73,7 +73,7 @@ export default function TabLayout() {
         style={[styles.floatingButton, { backgroundColor: colors.primary }]}
         onPress={handleAddWorkout}
       >
-        <Ionicons name="add" size={24} color="#FFFFFF" />
+        <Ionicons name="add" size={35} color="#FFFFFF" />
       </TouchableOpacity>
 
       <Tabs
@@ -81,12 +81,11 @@ export default function TabLayout() {
           tabBarStyle: {
             position: 'absolute',
             bottom: 30,
-            transform: [{ translateX: TAB_BAR_WIDTH / 9 }],
+            transform: [{ translateX: TAB_BAR_WIDTH / 16 }],
             width: TAB_BAR_WIDTH,
-            height: 44,
+            height: 55,
             backgroundColor: colors.tabBarBackground,
-            borderRadius: 22,
-            borderTopWidth: 0,
+            borderRadius: 30,
             ...styles.shadow,
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -110,7 +109,7 @@ export default function TabLayout() {
           options={{
             title: 'Logs',
             tabBarIcon: ({ focused }) => (
-              <TabBarIcon name="apps" focused={focused} position="beforePlus" />
+              <TabBarIcon name="list" focused={focused} position="beforePlus" />
             ),
           }}
         />
@@ -154,6 +153,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 32,
     alignItems: 'center',
+    marginTop: 6,
   },
   beforePlusIcon: {
     marginRight: 40,
@@ -164,17 +164,17 @@ const styles = StyleSheet.create({
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 24,
   },
   floatingButton: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 56,
     alignSelf: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 35,
     backgroundColor: '#6B4EFF',
     justifyContent: 'center',
     alignItems: 'center',

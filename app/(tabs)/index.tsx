@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -8,7 +8,9 @@ import { useColorScheme } from 'react-native';
 import { Exercise, WOD, getAllLogs } from '../../app/utils/db';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { format, startOfWeek, addDays, isSameDay, subDays } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
+
+type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 
 interface WeeklyStats {
   totalWorkouts: number;
@@ -37,24 +39,36 @@ export default function HomeScreen() {
     streakDays: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [logs, setLogs] = useState<WorkoutLog[]>([]);
 
-  // Get daily quote based on the day of the year
-  const getDailyQuote = () => {
-    const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
-    return motivationalQuotes[dayOfYear % motivationalQuotes.length];
+  const getWeeklyWorkoutData = () => {
+    const today = new Date();
+    const start = startOfWeek(today);
+    const end = endOfWeek(today);
+    const days = eachDayOfInterval({ start, end });
+    
+    const labels = days.map(day => format(day, 'EEE'));
+    const data = days.map(day => {
+      return logs.filter(log => {
+        const logDate = new Date(log.date);
+        return format(logDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
+      }).length;
+    });
+
+    return { labels, data };
   };
 
   const loadWeeklyStats = async () => {
     try {
       setIsLoading(true);
-      const logs = await getAllLogs();
+      const allLogs = await getAllLogs();
+      setLogs(allLogs);
       
       // Get start of current week
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
       
       // Filter logs for current week
-      const weekLogs = logs.filter(log => {
+      const weekLogs = allLogs.filter(log => {
         const logDate = new Date(log.date);
         return logDate >= weekStart && logDate <= new Date();
       });
@@ -66,7 +80,7 @@ export default function HomeScreen() {
 
       while (hasWorkout) {
         const dateStr = format(currentDate, 'yyyy-MM-dd');
-        const workoutsOnDate = logs.filter(log => log.date === dateStr);
+        const workoutsOnDate = allLogs.filter(log => log.date === dateStr);
         
         if (workoutsOnDate.length > 0) {
           streakDays++;
@@ -78,8 +92,8 @@ export default function HomeScreen() {
 
       setWeeklyStats({
         totalWorkouts: weekLogs.length,
-        strengthWorkouts: weekLogs.filter(log => !('type' in log)).length,
-        wodWorkouts: weekLogs.filter(log => 'type' in log).length,
+        strengthWorkouts: weekLogs.filter(log => log.type === 'exercise').length,
+        wodWorkouts: weekLogs.filter(log => log.type === 'wod').length,
         streakDays,
       });
     } catch (error) {
@@ -95,21 +109,6 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // Generate array of dates for the week
-  const weekDays = [...Array(7)].map((_, i) => {
-    const date = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), i);
-    return {
-      date,
-      dayName: format(date, 'EEE'),
-      dayNumber: format(date, 'd'),
-      isToday: isSameDay(date, new Date()),
-    };
-  });
-
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-  };
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -119,6 +118,14 @@ export default function HomeScreen() {
       </SafeAreaView>
     );
   }
+
+  const weeklyData = getWeeklyWorkoutData();
+
+  // Get daily quote based on the day of the year
+  const getDailyQuote = () => {
+    const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
+    return motivationalQuotes[dayOfYear % motivationalQuotes.length];
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -133,45 +140,44 @@ export default function HomeScreen() {
           <ThemedText style={styles.quoteText}>{getDailyQuote()}</ThemedText>
         </ThemedView>
 
-        {/* Calendar Strip */}
-        <View style={styles.calendarContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.calendarContent}
-          >
-            {weekDays.map((day, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.dayContainer,
-                  day.isToday && styles.todayContainer,
-                  isSameDay(day.date, selectedDate) && {
-                    backgroundColor: colors.primary,
-                  },
-                ]}
-                onPress={() => handleDateSelect(day.date)}
-              >
-                <ThemedText
-                  style={[
-                    styles.dayName,
-                    (day.isToday || isSameDay(day.date, selectedDate)) && styles.selectedText,
-                  ]}
-                >
-                  {day.dayName}
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.dayNumber,
-                    (day.isToday || isSameDay(day.date, selectedDate)) && styles.selectedText,
-                  ]}
-                >
-                  {day.dayNumber}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Weekly Activity */}
+        <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+          <ThemedText style={styles.cardTitle}>Weekly Activity</ThemedText>
+          <View style={styles.weeklyActivityContainer}>
+            {weeklyData.data.map((count, index) => {
+              const isToday = weeklyData.labels[index] === format(new Date(), 'EEE');
+              return (
+                <View key={index} style={styles.dayContainer}>
+                  <ThemedText style={[
+                    styles.dayLabel,
+                    isToday && styles.todayLabel
+                  ]}>{weeklyData.labels[index]}</ThemedText>
+                  <View style={[
+                    styles.activityIndicator,
+                    {
+                      backgroundColor: colors.primary + (isToday ? '30' : '20'),
+                      height: Math.max(30, count * 25),
+                    },
+                    isToday && { borderWidth: 2, borderColor: colors.primary }
+                  ]}>
+                    <View style={[
+                      styles.activityFill,
+                      {
+                        backgroundColor: colors.primary,
+                        height: count > 0 ? '100%' : 0,
+                        opacity: Math.min(0.3 + (count * 0.2), 1),
+                      }
+                    ]} />
+                  </View>
+                  <ThemedText style={[
+                    styles.countLabel,
+                    isToday && styles.todayLabel
+                  ]}>{count}</ThemedText>
+                </View>
+              );
+            })}
+          </View>
+        </ThemedView>
 
         {/* Weekly Stats */}
         <View style={styles.statsContainer}>
@@ -220,7 +226,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    padding: 20,
+    padding: 16,
+    paddingBottom: 8,
   },
   title: {
     fontSize: 28,
@@ -229,11 +236,12 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 16,
     opacity: 0.7,
-    marginTop: 4,
+    marginTop: 2,
   },
   card: {
-    margin: 20,
-    padding: 20,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
     borderRadius: 16,
   },
   quoteText: {
@@ -250,10 +258,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   dayContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
     width: 56,
     height: 72,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 8,
     borderRadius: 16,
     backgroundColor: 'transparent',
@@ -275,13 +284,15 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   statsContainer: {
-    padding: 20,
+    padding: 16,
+    paddingTop: 8,
+    marginBottom: 100,
   },
   statsCard: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -332,5 +343,43 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     opacity: 0.6,
+  },
+  weeklyActivityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 160,
+    paddingTop: 12,
+  },
+  dayLabel: {
+    fontSize: 12,
+    marginBottom: 8,
+    opacity: 0.6,
+  },
+  todayLabel: {
+    opacity: 1,
+    fontWeight: '600',
+  },
+  activityIndicator: {
+    width: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+    minHeight: 30,
+  },
+  activityFill: {
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    borderRadius: 16,
+  },
+  countLabel: {
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '600',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
   },
 });

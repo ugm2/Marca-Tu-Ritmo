@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, TextInput, Modal, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, GestureResponderEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -8,10 +8,14 @@ import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Exercise, WOD, getAllLogs, deleteWOD, deleteExercise } from '../../app/utils/db';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { format } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 import { useSettings } from '../../contexts/SettingsContext';
+import { Portal } from '@gorhom/portal';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
+type DateFilter = 'all' | 'week' | 'month' | '3months';
+type SortOrder = 'newest' | 'oldest';
+type WorkoutTypeFilter = 'all' | 'wod' | 'exercise';
 
 export default function LogsScreen() {
   const colorScheme = useColorScheme();
@@ -22,8 +26,57 @@ export default function LogsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedLog, setSelectedLog] = useState<WorkoutLog | null>(null);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [workoutTypeFilter, setWorkoutTypeFilter] = useState<WorkoutTypeFilter>('all');
+  const [tempWorkoutTypeFilter, setTempWorkoutTypeFilter] = useState<WorkoutTypeFilter>('all');
+  const [tempDateFilter, setTempDateFilter] = useState<DateFilter>('all');
+  const [tempSortOrder, setTempSortOrder] = useState<SortOrder>('newest');
   const { settings } = useSettings();
   const router = useRouter();
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
+
+  const applyFilters = useCallback((logsToFilter: WorkoutLog[]) => {
+    let filtered = [...logsToFilter];
+
+    // Apply workout type filter
+    if (workoutTypeFilter !== 'all') {
+      filtered = filtered.filter(log => log.type === workoutTypeFilter);
+    }
+
+    // Apply date filter
+    const today = new Date();
+    switch (dateFilter) {
+      case 'week':
+        filtered = filtered.filter(log => {
+          const logDate = new Date(log.date);
+          return logDate >= subDays(today, 7);
+        });
+        break;
+      case 'month':
+        filtered = filtered.filter(log => {
+          const logDate = new Date(log.date);
+          return logDate >= subMonths(today, 1);
+        });
+        break;
+      case '3months':
+        filtered = filtered.filter(log => {
+          const logDate = new Date(log.date);
+          return logDate >= subMonths(today, 3);
+        });
+        break;
+    }
+
+    // Apply sort order
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [dateFilter, workoutTypeFilter, sortOrder]);
 
   const loadLogs = useCallback(async () => {
     try {
@@ -60,13 +113,13 @@ export default function LogsScreen() {
       );
 
       setLogs(sortedLogs);
-      setFilteredLogs(sortedLogs);
+      setFilteredLogs(applyFilters(sortedLogs));
     } catch (error) {
       console.error('Error loading logs:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [applyFilters]);
 
   const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
@@ -93,8 +146,8 @@ export default function LogsScreen() {
                reps.includes(searchTerm);
       }
     });
-    setFilteredLogs(filtered);
-  }, [logs]);
+    setFilteredLogs(applyFilters(filtered));
+  }, [logs, applyFilters]);
 
   useFocusEffect(
     useCallback(() => {
@@ -230,6 +283,213 @@ export default function LogsScreen() {
     );
   };
 
+  const showFilterPanel = () => {
+    setTempWorkoutTypeFilter(workoutTypeFilter);
+    setTempDateFilter(dateFilter);
+    setTempSortOrder(sortOrder);
+    setFilterModalVisible(true);
+    Animated.spring(slideAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11
+    }).start();
+  };
+
+  const closePanel = () => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11
+    }).start(() => {
+      setFilterModalVisible(false);
+    });
+  };
+
+  const applyFiltersAndClose = () => {
+    setWorkoutTypeFilter(tempWorkoutTypeFilter);
+    setDateFilter(tempDateFilter);
+    setSortOrder(tempSortOrder);
+    setFilteredLogs(applyFilters(logs));
+    closePanel();
+  };
+
+  const handleOverlayPress = () => {
+    closePanel();
+  };
+
+  const FilterPanel = () => {
+    if (!filterModalVisible) return null;
+
+    return (
+      <Portal>
+        <View style={styles.filterPanelContainer}>
+          <TouchableOpacity 
+            style={styles.filterPanelOverlay} 
+            activeOpacity={1} 
+            onPress={handleOverlayPress}
+          />
+          <Animated.View
+            style={[
+              styles.filterPanelContent,
+              {
+                backgroundColor: colors.cardBackground,
+                transform: [{
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [600, 0]
+                  })
+                }]
+              }
+            ]}
+          >
+            <View style={styles.filterPanelHandle} />
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Filter Workouts</ThemedText>
+              <TouchableOpacity onPress={closePanel}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterSection}>
+              <ThemedText style={styles.filterSectionTitle}>Workout Type</ThemedText>
+              <View style={styles.filterOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempWorkoutTypeFilter === 'all' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempWorkoutTypeFilter('all')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempWorkoutTypeFilter === 'all' && { color: colors.primary }
+                  ]}>All</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempWorkoutTypeFilter === 'wod' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempWorkoutTypeFilter('wod')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempWorkoutTypeFilter === 'wod' && { color: colors.primary }
+                  ]}>WODs</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempWorkoutTypeFilter === 'exercise' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempWorkoutTypeFilter('exercise')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempWorkoutTypeFilter === 'exercise' && { color: colors.primary }
+                  ]}>Exercises</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.filterSection}>
+              <ThemedText style={styles.filterSectionTitle}>Date Range</ThemedText>
+              <View style={styles.filterOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempDateFilter === 'all' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempDateFilter('all')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempDateFilter === 'all' && { color: colors.primary }
+                  ]}>All Time</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempDateFilter === 'week' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempDateFilter('week')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempDateFilter === 'week' && { color: colors.primary }
+                  ]}>Last Week</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempDateFilter === 'month' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempDateFilter('month')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempDateFilter === 'month' && { color: colors.primary }
+                  ]}>Last Month</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempDateFilter === '3months' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempDateFilter('3months')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempDateFilter === '3months' && { color: colors.primary }
+                  ]}>Last 3 Months</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.filterSection}>
+              <ThemedText style={styles.filterSectionTitle}>Sort Order</ThemedText>
+              <View style={styles.filterOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempSortOrder === 'newest' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempSortOrder('newest')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempSortOrder === 'newest' && { color: colors.primary }
+                  ]}>Newest First</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    tempSortOrder === 'oldest' && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => setTempSortOrder('oldest')}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText,
+                    tempSortOrder === 'oldest' && { color: colors.primary }
+                  ]}>Oldest First</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.applyButton, { backgroundColor: colors.primary }]}
+              onPress={applyFiltersAndClose}
+            >
+              <ThemedText style={styles.applyButtonText}>Apply Filters</ThemedText>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Portal>
+    );
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -241,90 +501,102 @@ export default function LogsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>Workout Logs</ThemedText>
-          <View style={[styles.searchContainer, { backgroundColor: colors.cardBackground }]}>
-            <Ionicons 
-              name="search" 
-              size={20} 
-              color={colors.text} 
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search workouts..."
-              placeholderTextColor={colors.text + '80'}
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-            {searchQuery !== '' && (
-              <TouchableOpacity 
-                onPress={() => handleSearch('')}
-                style={styles.clearButton}
-              >
+    <>
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <ThemedText style={styles.title}>Workout Logs</ThemedText>
+            <View style={styles.searchRow}>
+              <View style={[styles.searchContainer, { backgroundColor: colors.cardBackground, flex: 1 }]}>
                 <Ionicons 
-                  name="close-circle" 
+                  name="search" 
                   size={20} 
-                  color={colors.text}
+                  color={colors.text} 
+                  style={styles.searchIcon}
                 />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {filteredLogs.length === 0 ? (
-          <ThemedView style={styles.emptyState}>
-            <ThemedText style={styles.emptyStateText}>
-              {searchQuery ? 'No workouts found matching your search.' : 'No workouts logged yet. Add your first workout using the + button!'}
-            </ThemedText>
-          </ThemedView>
-        ) : (
-          <View style={styles.logsContainer}>
-            {filteredLogs.map((log, index) => (
-              <WorkoutCard key={index} log={log} />
-            ))}
-          </View>
-        )}
-      </ScrollView>
-
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={deleteModalVisible}
-        onRequestClose={() => setDeleteModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <ThemedView style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
-            <ThemedText style={styles.modalTitle}>Delete Workout</ThemedText>
-            <ThemedText style={styles.modalText}>
-              Are you sure you want to delete this workout? This action cannot be undone.
-            </ThemedText>
-            <View style={styles.modalButtons}>
+                <TextInput
+                  style={[styles.searchInput, { color: colors.text }]}
+                  placeholder="Search workouts..."
+                  placeholderTextColor={colors.text + '80'}
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                />
+                {searchQuery !== '' && (
+                  <TouchableOpacity 
+                    onPress={() => handleSearch('')}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons 
+                      name="close-circle" 
+                      size={20} 
+                      color={colors.text}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setDeleteModalVisible(false)}
+                onPress={showFilterPanel}
+                style={[styles.filterButton, { height: Platform.OS === 'ios' ? 41 : 45 }]}
               >
-                <ThemedText style={styles.buttonText}>Cancel</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmDeleteButton]}
-                onPress={handleDeleteConfirm}
-              >
-                <ThemedText style={[styles.buttonText, styles.deleteButtonText]}>Delete</ThemedText>
+                <Ionicons name="filter" size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
-          </ThemedView>
-        </View>
-      </Modal>
-    </SafeAreaView>
+          </View>
+
+          {filteredLogs.length === 0 ? (
+            <ThemedView style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateText}>
+                {searchQuery ? 'No workouts found matching your search.' : 'No workouts logged yet. Add your first workout using the + button!'}
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            <View style={styles.logsContainer}>
+              {filteredLogs.map((log, index) => (
+                <WorkoutCard key={index} log={log} />
+              ))}
+            </View>
+          )}
+        </ScrollView>
+
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={deleteModalVisible}
+          onRequestClose={() => setDeleteModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <ThemedView style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
+              <ThemedText style={styles.modalTitle}>Delete Workout</ThemedText>
+              <ThemedText style={styles.modalText}>
+                Are you sure you want to delete this workout? This action cannot be undone.
+              </ThemedText>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setDeleteModalVisible(false)}
+                >
+                  <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.confirmDeleteButton]}
+                  onPress={handleDeleteConfirm}
+                >
+                  <ThemedText style={[styles.buttonText, styles.deleteButtonText]}>Delete</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </ThemedView>
+          </View>
+        </Modal>
+      </SafeAreaView>
+      <FilterPanel />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 120,
   },
   scrollView: {
     flex: 1,
@@ -466,15 +738,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    width: '80%',
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -535,5 +804,100 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 68, 68, 0.2)',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  filterButton: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  filterOptionText: {
+    fontSize: 14,
+  },
+  applyButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  applyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  filterPanelContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-end',
+    zIndex: 10000,
+    elevation: 10000,
+  },
+  filterPanelOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  filterPanelContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingTop: 12,
+    maxHeight: '80%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  filterPanelHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
   },
 }); 
