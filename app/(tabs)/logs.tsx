@@ -502,8 +502,12 @@ export default function LogsScreen() {
 
   return (
     <>
-      <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="never"
+        >
           <View style={styles.header}>
             <ThemedText style={styles.title}>Workout Logs</ThemedText>
             <View style={styles.searchRow}>

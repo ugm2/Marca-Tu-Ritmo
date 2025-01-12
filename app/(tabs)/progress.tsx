@@ -134,8 +134,12 @@ export default function ProgressScreen() {
   const exerciseProgress = getExerciseProgressData();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+      >
         <View style={styles.header}>
           <ThemedText style={styles.title}>Progress Insights</ThemedText>
         </View>

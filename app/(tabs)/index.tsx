@@ -128,8 +128,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="never"
+        >
         <View style={styles.header}>
           <ThemedText style={styles.title}>Weekly Progress</ThemedText>
           <ThemedText style={styles.date}>{format(new Date(), 'MMMM d, yyyy')}</ThemedText>
