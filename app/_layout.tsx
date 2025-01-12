@@ -59,7 +59,7 @@ function RootLayoutNav() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="add-workout" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="add-workout" options={{ presentation: 'modal', headerShown: false }} />
           </Stack>
         </GestureHandlerRootView>
       </ThemeProvider>
