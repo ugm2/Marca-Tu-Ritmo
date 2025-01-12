@@ -743,6 +743,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     borderRadius: 16,
+    marginLeft: 20,
+    marginRight: 20,
     padding: 20,
     ...Platform.select({
       ios: {
