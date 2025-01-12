@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, Dimensions, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, Dimensions, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -10,6 +10,8 @@ import { Exercise, WOD, getAllLogs } from '../../app/utils/db';
 import { LineChart, PieChart, ContributionGraph } from 'react-native-chart-kit';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays } from 'date-fns';
 import { useSettings } from '../../contexts/SettingsContext';
+import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity } from 'react-native';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 
@@ -17,6 +19,8 @@ export default function ProgressScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
+  const [filteredExercises, setFilteredExercises] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const { settings } = useSettings();
   const screenWidth = Dimensions.get('window').width;
@@ -120,6 +124,23 @@ export default function ProgressScreen() {
     fillShadowGradientTo: colors.cardBackground,
   };
 
+  const handleSearch = useCallback((text: string) => {
+    setSearchQuery(text);
+    const searchTerm = text.toLowerCase();
+    const exerciseProgress = getExerciseProgressData();
+    const filtered = exerciseProgress.filter(exercise => 
+      exercise.name.toLowerCase().includes(searchTerm)
+    );
+    setFilteredExercises(filtered);
+  }, [logs]);
+
+  useEffect(() => {
+    if (logs.length > 0) {
+      const exerciseProgress = getExerciseProgressData();
+      setFilteredExercises(exerciseProgress);
+    }
+  }, [logs]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -142,6 +163,33 @@ export default function ProgressScreen() {
       >
         <View style={styles.header}>
           <ThemedText style={styles.title}>Progress Insights</ThemedText>
+          <View style={[styles.searchContainer, { backgroundColor: colors.cardBackground }]}>
+            <Ionicons 
+              name="search" 
+              size={20} 
+              color={colors.text} 
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search exercises..."
+              placeholderTextColor={colors.text + '80'}
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+            {searchQuery !== '' && (
+              <TouchableOpacity 
+                onPress={() => handleSearch('')}
+                style={styles.clearButton}
+              >
+                <Ionicons 
+                  name="close-circle" 
+                  size={20} 
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
@@ -180,7 +228,7 @@ export default function ProgressScreen() {
           )}
         </ThemedView>
 
-        {exerciseProgress.map((exercise, index) => (
+        {filteredExercises.map((exercise, index) => (
           <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground}]}>
             <ThemedText style={styles.cardTitle}>{exercise.name} Progress</ThemedText>
             <View style={styles.chartWrapper}>
@@ -331,5 +379,36 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 14,
     opacity: 0.8,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  searchIcon: {
+    marginRight: 8,
+    opacity: 0.7,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 0,
+  },
+  clearButton: {
+    padding: 4,
   },
 }); 
