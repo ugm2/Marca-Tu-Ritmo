@@ -46,43 +46,29 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
-      >
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>Settings</ThemedText>
-        </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="never"
+        >
+          <View style={styles.header}>
+            <ThemedText style={styles.title}>Settings</ThemedText>
+          </View>
 
-        <View style={styles.settingsContainer}>
-          <SettingItem
-            icon="scale"
-            title="Use Metric System"
-            description="Switch between kilograms (kg) and pounds (lb)"
-            value={settings.useMetric}
-            onValueChange={(value) => updateSettings({ useMetric: value })}
-          />
-
-          <SettingItem
-            icon="timer"
-            title="Rest Timer"
-            description="Show rest timer between sets"
-            value={settings.showRestTimer}
-            onValueChange={(value) => updateSettings({ showRestTimer: value })}
-          />
-
-          <SettingItem
-            icon="moon"
-            title="Dark Mode"
-            description="Switch between light and dark theme"
-            value={settings.darkMode}
-            onValueChange={(value) => updateSettings({ darkMode: value })}
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.settingsContainer}>
+            <SettingItem
+              icon="scale"
+              title="Use Metric System"
+              description="Switch between kilograms (kg) and pounds (lb)"
+              value={settings.useMetric}
+              onValueChange={(value) => updateSettings({ useMetric: value })}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 

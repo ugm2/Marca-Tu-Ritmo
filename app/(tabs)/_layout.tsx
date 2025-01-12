@@ -84,7 +84,7 @@ export default function TabLayout() {
             transform: [{ translateX: TAB_BAR_WIDTH / 16 }],
             width: TAB_BAR_WIDTH,
             height: 55,
-            backgroundColor: colors.tabBarBackground,
+            backgroundColor: colorScheme === 'dark' ? '#1C1C1E' : colors.cardBackground,
             borderRadius: 30,
             ...styles.shadow,
             justifyContent: 'space-between',
