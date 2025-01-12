@@ -141,6 +141,40 @@ export default function ProgressScreen() {
     }
   }, [logs]);
 
+  const getPRData = () => {
+    const exerciseLogs = logs.filter(log => log.type === 'exercise') as Exercise[];
+    const exerciseNames = [...new Set(exerciseLogs.map(log => log.name))];
+    
+    return exerciseNames.map(name => {
+      const exerciseData = exerciseLogs
+        .filter(log => log.name === name)
+        .map(log => ({
+          date: new Date(log.date),
+          weight: typeof log.weight === 'string' ? parseFloat(log.weight) : (log.weight || 0)
+        }))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      // Find PRs (where weight is higher than all previous weights)
+      let maxWeight = 0;
+      const prs = exerciseData.filter((data, index) => {
+        if (data.weight > maxWeight) {
+          maxWeight = data.weight;
+          return true;
+        }
+        return false;
+      });
+
+      return {
+        name,
+        prs: prs.map(pr => ({
+          date: pr.date,
+          weight: pr.weight
+        }))
+      };
+    }).filter(exercise => exercise.prs.length > 0)
+      .sort((a, b) => b.prs.length - a.prs.length);
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -192,41 +226,67 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-          <ThemedText style={styles.cardTitle}>All-Time Workout Distribution</ThemedText>
-          {logs.length > 0 ? (
-            <View style={styles.chartWrapper}>
-              <PieChart
-                data={[
-                  {
-                    name: `% WODs`,
-                    population: typeDistribution.data[0],
-                    color: colors.primary,
-                    legendFontColor: colors.text,
-                    legendFontSize: 12,
-                  },
-                  {
-                    name: `% Exercises`,
-                    population: typeDistribution.data[1],
-                    color: colors.secondary,
-                    legendFontColor: colors.text,
-                    legendFontSize: 12,
-                  }
-                ]}
-                width={screenWidth - 48}
-                height={220}
-                chartConfig={chartConfig}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="0"
-                absolute
-                style={styles.chart}
-              />
-            </View>
-          ) : (
-            <ThemedText style={styles.noDataText}>No workout data available</ThemedText>
-          )}
-        </ThemedView>
+        {logs.length > 0 ? (
+          <>
+            {getPRData()
+              .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
+              .length > 0 ? (
+              <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                <ThemedText style={styles.cardTitle}>Personal Records</ThemedText>
+                <View style={styles.prGrid}>
+                  {getPRData()
+                    .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((exercise, index) => {
+                    const latestPR = exercise.prs[exercise.prs.length - 1];
+                    return (
+                      <View 
+                        key={index} 
+                        style={[
+                          styles.prCard,
+                          { backgroundColor: colors.primary + '10' }
+                        ]}
+                      >
+                        <View style={styles.prHeader}>
+                          <ThemedText style={styles.prExerciseName}>
+                            {exercise.name}
+                          </ThemedText>
+                          <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
+                            <ThemedText style={styles.prLabel}>PR</ThemedText>
+                          </View>
+                        </View>
+                        <ThemedText style={styles.prWeight}>
+                          {settings.useMetric ? 
+                            `${latestPR.weight}kg` : 
+                            `${Math.round(latestPR.weight * 2.20462)}lb`}
+                        </ThemedText>
+                        <ThemedText style={styles.prDate}>
+                          {format(latestPR.date, 'MMM d, yyyy')}
+                        </ThemedText>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ThemedView>
+            ) : searchQuery !== '' && (
+              <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                <View style={styles.noResultsContainer}>
+                  <Ionicons 
+                    name="search-outline" 
+                    size={48} 
+                    color={colors.text + '40'}
+                    style={styles.noResultsIcon}
+                  />
+                  <ThemedText style={styles.noResultsTitle}>No records found</ThemedText>
+                  <ThemedText style={styles.noResultsText}>
+                    No personal records match your search for "{searchQuery}"
+                  </ThemedText>
+                </View>
+              </ThemedView>
+            )}
+          </>
+        ) : (
+          <ThemedText style={styles.noDataText}>No workout data available</ThemedText>
+        )}
 
         {filteredExercises.map((exercise, index) => (
           <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground}]}>
@@ -410,5 +470,74 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 4,
+  },
+  prGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  prCard: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  prHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  prExerciseName: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 8,
+  },
+  prBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  prLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  prWeight: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  prDate: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  noResultsIcon: {
+    marginBottom: 12,
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    opacity: 0.6,
+    fontSize: 14,
   },
 }); 

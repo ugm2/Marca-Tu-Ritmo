@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, GestureResponderEvent } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, TextInput, Modal, Alert, Animated, GestureResponderEvent, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
@@ -556,18 +556,32 @@ export default function LogsScreen() {
             </View>
           </View>
 
-          {filteredLogs.length === 0 ? (
-            <ThemedView style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateText}>
-                {searchQuery ? 'No workouts found matching your search.' : 'No workouts logged yet. Add your first workout using the + button!'}
-              </ThemedText>
-            </ThemedView>
-          ) : (
-            <View style={styles.logsContainer}>
+          {filteredLogs.length > 0 ? (
+            <ScrollView 
+              style={styles.logsContainer}
+              showsVerticalScrollIndicator={false}
+            >
               {filteredLogs.map((log, index) => (
                 <WorkoutCard key={index} log={log} />
               ))}
-            </View>
+            </ScrollView>
+          ) : searchQuery !== '' ? (
+            <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+              <View style={styles.noResultsContainer}>
+                <Ionicons 
+                  name="search-outline" 
+                  size={48} 
+                  color={colors.text + '40'}
+                  style={styles.noResultsIcon}
+                />
+                <ThemedText style={styles.noResultsTitle}>No workouts found</ThemedText>
+                <ThemedText style={styles.noResultsText}>
+                  No workouts match your search for "{searchQuery}"
+                </ThemedText>
+              </View>
+            </ThemedView>
+          ) : (
+            <ThemedText style={styles.noDataText}>No workout logs available</ThemedText>
           )}
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -810,6 +824,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     position: 'relative',
+    marginBottom: 16,
   },
   cardDeleteButton: {
     position: 'absolute',
@@ -918,5 +933,45 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 100,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  noResultsIcon: {
+    marginBottom: 12,
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    opacity: 0.6,
+    fontSize: 14,
+  },
+  noDataText: {
+    textAlign: 'center',
+    opacity: 0.7,
+    fontSize: 14,
+  },
+  card: {
+    margin: 20,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
 }); 
