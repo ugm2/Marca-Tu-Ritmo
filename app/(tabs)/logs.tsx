@@ -325,11 +325,20 @@ export default function LogsScreen() {
     return (
       <Portal>
         <View style={styles.filterPanelContainer}>
-          <TouchableOpacity 
-            style={styles.filterPanelOverlay} 
-            activeOpacity={1} 
-            onPress={handleOverlayPress}
-          />
+          <Animated.View 
+            style={[
+              styles.filterPanelOverlay,
+              {
+                opacity: slideAnim
+              }
+            ]} 
+          >
+            <TouchableOpacity 
+              style={{ flex: 1 }}
+              activeOpacity={1} 
+              onPress={handleOverlayPress}
+            />
+          </Animated.View>
           <Animated.View
             style={[
               styles.filterPanelContent,
@@ -879,6 +888,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flex: 1,
   },
   filterPanelContent: {
     borderTopLeftRadius: 20,
