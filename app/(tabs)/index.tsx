@@ -156,22 +156,24 @@ export default function HomeScreen() {
                     styles.dayLabel,
                     isToday && styles.todayLabel
                   ]}>{weeklyData.labels[index]}</ThemedText>
-                  <View style={[
-                    styles.activityIndicator,
-                    {
-                      backgroundColor: colors.primary + (isToday ? '30' : '20'),
-                      height: Math.max(30, count * 25),
-                    },
-                    isToday && { borderWidth: 2, borderColor: colors.primary }
-                  ]}>
+                  <View style={styles.activityWrapper}>
                     <View style={[
-                      styles.activityFill,
+                      styles.activityIndicator,
                       {
-                        backgroundColor: colors.primary,
-                        height: count > 0 ? '100%' : 0,
-                        opacity: Math.min(0.3 + (count * 0.2), 1),
-                      }
-                    ]} />
+                        backgroundColor: colors.primary + (isToday ? '30' : '20'),
+                        height: Math.max(30, count * 25),
+                      },
+                      isToday && { borderWidth: 2, borderColor: colors.primary }
+                    ]}>
+                      <View style={[
+                        styles.activityFill,
+                        {
+                          backgroundColor: colors.primary,
+                          height: '100%',
+                          opacity: Math.min(0.3 + (count * 0.2), 1),
+                        }
+                      ]} />
+                    </View>
                   </View>
                   <ThemedText style={[
                     styles.countLabel,
@@ -263,13 +265,8 @@ const styles = StyleSheet.create({
   },
   dayContainer: {
     alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    width: 56,
-    height: 72,
-    marginRight: 8,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
+    width: 32,
+    paddingTop: 8,
   },
   todayContainer: {
     backgroundColor: '#F3F4F6',
@@ -352,23 +349,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    height: 160,
-    paddingTop: 12,
+    height: 140,
+    paddingTop: 8,
   },
   dayLabel: {
     fontSize: 12,
-    marginBottom: 8,
+    marginBottom: 16,
     opacity: 0.6,
+    position: 'absolute',
+    top: 0,
   },
   todayLabel: {
     opacity: 1,
     fontWeight: '600',
   },
+  activityWrapper: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   activityIndicator: {
     width: 32,
     borderRadius: 16,
     overflow: 'hidden',
-    minHeight: 30,
+    minHeight: 0,
   },
   activityFill: {
     width: '100%',
