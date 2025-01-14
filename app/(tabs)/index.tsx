@@ -161,7 +161,7 @@ export default function HomeScreen() {
                       styles.activityIndicator,
                       {
                         backgroundColor: colors.primary + (isToday ? '30' : '20'),
-                        height: Math.max(30, count * 25),
+                        height: Math.min(90, Math.max(30, count * 25)),
                       },
                       isToday && { borderWidth: 2, borderColor: colors.primary }
                     ]}>
