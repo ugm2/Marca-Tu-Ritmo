@@ -155,29 +155,56 @@ export default function ProgressScreen() {
         .filter(log => log.name === name)
         .map(log => ({
           date: new Date(log.date),
-          weight: typeof log.weight === 'string' ? parseFloat(log.weight) : (log.weight || 0)
+          weight: typeof log.weight === 'string' ? parseFloat(log.weight) : (log.weight || 0),
+          reps: typeof log.reps === 'string' ? parseInt(log.reps) : (log.reps || 0)
         }))
+        .filter(data => !isNaN(data.date.getTime())) // Filter out invalid dates
         .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      // Find PRs (where weight is higher than all previous weights)
-      let maxWeight = 0;
-      const prs = exerciseData.filter((data, index) => {
-        if (data.weight > maxWeight) {
-          maxWeight = data.weight;
-          return true;
-        }
-        return false;
-      });
+      if (exerciseData.length === 0) return null;
+
+      // Find max weight
+      const maxWeight = Math.max(...exerciseData.map(data => data.weight));
+      
+      // Get all attempts at max weight
+      const maxWeightAttempts = exerciseData.filter(data => data.weight === maxWeight);
+      
+      // Find the attempt with most reps at max weight
+      const bestAttempt = maxWeightAttempts.reduce((best, current) => 
+        current.reps > best.reps ? current : best
+      , maxWeightAttempts[0]);
+
+      if (!bestAttempt) return null;
+
+      // Count how many times we've done this exact weight and reps
+      const identicalAttempts = maxWeightAttempts.filter(
+        attempt => attempt.reps === bestAttempt.reps
+      );
+
+      // Get the latest date this PR was achieved (safely)
+      const latestAttemptDate = identicalAttempts
+        .map(a => a.date.getTime())
+        .filter(time => !isNaN(time));
+      
+      const latestDate = latestAttemptDate.length > 0 
+        ? new Date(Math.max(...latestAttemptDate))
+        : bestAttempt.date;
+
+      if (!latestDate) return null;
 
       return {
         name,
-        prs: prs.map(pr => ({
-          date: pr.date,
-          weight: pr.weight
-        }))
+        bestAttempt: {
+          ...bestAttempt,
+          date: latestDate
+        },
+        identicalAttempts: identicalAttempts.length
       };
-    }).filter(exercise => exercise.prs.length > 0)
-      .sort((a, b) => b.prs.length - a.prs.length);
+    })
+    .filter((exercise): exercise is NonNullable<typeof exercise> => 
+      exercise !== null && exercise.bestAttempt !== undefined && exercise.bestAttempt.date !== undefined
+    )
+    .sort((a, b) => b.bestAttempt.weight - a.bestAttempt.weight);
   };
 
   if (isLoading) {
@@ -242,7 +269,6 @@ export default function ProgressScreen() {
                   {getPRData()
                     .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map((exercise, index) => {
-                    const latestPR = exercise.prs[exercise.prs.length - 1];
                     return (
                       <View 
                         key={index} 
@@ -256,17 +282,24 @@ export default function ProgressScreen() {
                             {exercise.name}
                           </ThemedText>
                           <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
-                            <ThemedText style={styles.prLabel}>PR</ThemedText>
+                            <ThemedText style={styles.prLabel}>
+                              {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
+                            </ThemedText>
                           </View>
                         </View>
                         <ThemedText style={styles.prWeight}>
                           {settings.useMetric ? 
-                            `${latestPR.weight}kg` : 
-                            `${Math.round(latestPR.weight * 2.20462)}lb`}
+                            `${exercise.bestAttempt.weight}kg` : 
+                            `${Math.round(exercise.bestAttempt.weight * 2.20462)}lb`}
                         </ThemedText>
                         <ThemedText style={styles.prDate}>
-                          {format(latestPR.date, 'MMM d, yyyy')}
+                          {format(exercise.bestAttempt.date, 'MMM d, yyyy')}
                         </ThemedText>
+                        {exercise.identicalAttempts >= 3 && (
+                          <ThemedText style={styles.prSuggestion}>
+                            You've done this {exercise.identicalAttempts} times - try increasing the weight!
+                          </ThemedText>
+                        )}
                       </View>
                     );
                   })}
@@ -522,6 +555,11 @@ const styles = StyleSheet.create({
   prWeight: {
     fontSize: 24,
     fontWeight: '700',
+    marginBottom: 2,
+  },
+  prReps: {
+    fontSize: 16,
+    opacity: 0.8,
     marginBottom: 4,
   },
   prDate: {
@@ -544,5 +582,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.6,
     fontSize: 14,
+  },
+  prSuggestion: {
+    fontSize: 12,
+    color: Colors.light.primary,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 }); 
