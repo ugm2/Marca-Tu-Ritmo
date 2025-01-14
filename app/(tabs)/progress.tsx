@@ -91,7 +91,9 @@ export default function ProgressScreen() {
         .filter(log => log.name === name)
         .map(log => ({
           date: new Date(log.date),
-          weight: typeof log.weight === 'string' ? parseFloat(log.weight) : (log.weight || 0)
+          weight: typeof log.weight === 'string' ? 
+            parseFloat(log.weight) || 0 : // Use 0 if parsing fails
+            (log.weight || 0)
         }))
         .sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -100,9 +102,12 @@ export default function ProgressScreen() {
         data: exerciseData.map(d => d.weight),
         dates: exerciseData.map(d => format(d.date, 'MMM d'))
       };
-    }).filter(exercise => exercise.data.length > 0)
-      .sort((a, b) => b.data.length - a.data.length)
-      .slice(0, 5); // Show top 5 most tracked exercises
+    }).filter(exercise => 
+      exercise.data.length > 0 && 
+      exercise.data.every(weight => typeof weight === 'number' && !isNaN(weight))
+    )
+    .sort((a, b) => b.data.length - a.data.length)
+    .slice(0, 5); // Show top 5 most tracked exercises
   };
 
   const chartConfig = {
