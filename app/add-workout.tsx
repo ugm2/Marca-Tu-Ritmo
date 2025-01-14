@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Modal, FlatList, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Modal, FlatList, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
@@ -46,6 +46,11 @@ export default function AddWorkoutScreen() {
   const [result, setResult] = useState(params.result as string || '');
 
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const handleFocus = (field: string) => setFocusedField(field);
+  const handleBlur = () => setFocusedField(null);
 
   useEffect(() => {
     if (params.editMode === 'true' && params.workoutType === 'wod' && params.type) {
@@ -258,139 +263,145 @@ export default function AddWorkoutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
-            </TouchableOpacity>
-            <ThemedText style={styles.title}>{screenTitle}</ThemedText>
-            <TouchableOpacity onPress={handleSubmit}>
-              <ThemedText style={[styles.saveButton, { color: colors.primary }]}>Save</ThemedText>
-            </TouchableOpacity>
-          </View>
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={{ flex: 1 }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          <ScrollView 
+            style={styles.scrollView} 
+            showsVerticalScrollIndicator={false}
+            contentInsetAdjustmentBehavior="automatic"
+          >
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => router.back()}>
+                <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <ThemedText style={styles.title}>{screenTitle}</ThemedText>
+              <TouchableOpacity onPress={handleSubmit}>
+                <ThemedText style={[styles.saveButton, { color: colors.primary }]}>Save</ThemedText>
+              </TouchableOpacity>
+            </View>
 
-          <ThemedView style={styles.form}>
-            <View style={styles.formRow}>
-              <ThemedText style={styles.label}>Workout Type</ThemedText>
-              <View style={styles.typeSwitch}>
-                <ThemedText>Exercise</ThemedText>
-                <Switch
-                  value={isWOD}
-                  onValueChange={setIsWOD}
-                  trackColor={{ false: colors.secondary, true: colors.primary }}
-                  ios_backgroundColor={colors.secondary}
-                />
-                <ThemedText>WOD</ThemedText>
+            <ThemedView style={styles.form}>
+              <View style={styles.formRow}>
+                <ThemedText style={styles.label}>Workout Type</ThemedText>
+                <View style={styles.typeSwitch}>
+                  <ThemedText>Exercise</ThemedText>
+                  <Switch
+                    value={isWOD}
+                    onValueChange={setIsWOD}
+                    trackColor={{ false: colors.secondary, true: colors.primary }}
+                    ios_backgroundColor={colors.secondary}
+                  />
+                  <ThemedText>WOD</ThemedText>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.formRow}>
-              <ThemedText style={styles.label}>Name</ThemedText>
-              <TextInput
-                style={[styles.input, { color: colors.text }]}
-                value={name}
-                onChangeText={setName}
-                placeholder="Workout name"
-                placeholderTextColor={colors.tabIconDefault}
-                onFocus={() => handleInputFocus(100)}
-              />
-            </View>
+              <View style={styles.formRow}>
+                <ThemedText style={styles.label}>Name</ThemedText>
+                <TextInput
+                  style={[styles.input, { color: colors.text }, focusedField === 'name' && styles.focusedInput]}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Workout name"
+                  placeholderTextColor={colors.tabIconDefault}
+                  onFocus={() => { handleFocus('name'); handleInputFocus(100); }}
+                  onBlur={handleBlur}
+                />
+              </View>
 
-            <View style={styles.formRow}>
-              <ThemedText style={styles.label}>Date</ThemedText>
-              {renderDateInput()}
-            </View>
+              <View style={styles.formRow}>
+                <ThemedText style={styles.label}>Date</ThemedText>
+                {renderDateInput()}
+              </View>
 
-            {isWOD ? (
-              <>
-                <View style={styles.formRow}>
-                  <ThemedText style={styles.label}>Type</ThemedText>
-                  {renderTypeInput()}
-                </View>
+              {isWOD ? (
+                <>
+                  <View style={styles.formRow}>
+                    <ThemedText style={styles.label}>Type</ThemedText>
+                    {renderTypeInput()}
+                  </View>
 
-                <View style={styles.formRow}>
-                  <ThemedText style={styles.label}>Description</ThemedText>
-                  <TextInput
-                    style={[styles.input, styles.textArea, { color: colors.text }]}
-                    value={description}
-                    onChangeText={setDescription}
-                    placeholder="Workout description"
-                    placeholderTextColor={colors.tabIconDefault}
-                    multiline
-                    numberOfLines={4}
-                    onFocus={() => handleInputFocus(300)}
-                  />
-                </View>
+                  <View style={styles.formRow}>
+                    <ThemedText style={styles.label}>Description</ThemedText>
+                    <TextInput
+                      style={[styles.input, styles.textArea, { color: colors.text }, focusedField === 'description' && styles.focusedInput]}
+                      value={description}
+                      onChangeText={setDescription}
+                      placeholder="Workout description"
+                      placeholderTextColor={colors.tabIconDefault}
+                      multiline
+                      numberOfLines={4}
+                      onFocus={() => { handleFocus('description'); handleInputFocus(300); }}
+                      onBlur={handleBlur}
+                    />
+                  </View>
 
-                <View style={styles.formRow}>
-                  <ThemedText style={styles.label}>Result</ThemedText>
-                  <TextInput
-                    style={[styles.input, { color: colors.text }]}
-                    value={result}
-                    onChangeText={setResult}
-                    placeholder="Time/Rounds/Score"
-                    placeholderTextColor={colors.tabIconDefault}
-                    onFocus={() => handleInputFocus(400)}
-                  />
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={styles.formRow}>
-                  <ThemedText style={styles.label}>Weight</ThemedText>
-                  <TextInput
-                    style={[styles.input, { color: colors.text }]}
-                    value={weight}
-                    onChangeText={setWeight}
-                    placeholder="Weight (e.g., 70kg)"
-                    placeholderTextColor={colors.tabIconDefault}
-                    keyboardType="numeric"
-                    onFocus={() => handleInputFocus(300)}
-                  />
-                </View>
+                  <View style={styles.formRow}>
+                    <ThemedText style={styles.label}>Result</ThemedText>
+                    <TextInput
+                      style={[styles.input, { color: colors.text }, focusedField === 'result' && styles.focusedInput]}
+                      value={result}
+                      onChangeText={setResult}
+                      placeholder="Time/Rounds/Score"
+                      placeholderTextColor={colors.tabIconDefault}
+                      onFocus={() => { handleFocus('result'); handleInputFocus(400); }}
+                      onBlur={handleBlur}
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.formRow}>
+                    <ThemedText style={styles.label}>Weight</ThemedText>
+                    <TextInput
+                      style={[styles.input, { color: colors.text }, focusedField === 'weight' && styles.focusedInput]}
+                      value={weight}
+                      onChangeText={setWeight}
+                      placeholder="Weight (e.g., 70kg)"
+                      placeholderTextColor={colors.tabIconDefault}
+                      keyboardType="numeric"
+                      onFocus={() => { handleFocus('weight'); handleInputFocus(300); }}
+                      onBlur={handleBlur}
+                    />
+                  </View>
 
-                <View style={styles.formRow}>
-                  <ThemedText style={styles.label}>Reps</ThemedText>
-                  <TextInput
-                    style={[styles.input, { color: colors.text }]}
-                    value={reps}
-                    onChangeText={setReps}
-                    placeholder="Reps (e.g., 3x10)"
-                    placeholderTextColor={colors.tabIconDefault}
-                    onFocus={() => handleInputFocus(400)}
-                  />
-                </View>
-              </>
-            )}
+                  <View style={styles.formRow}>
+                    <ThemedText style={styles.label}>Reps</ThemedText>
+                    <TextInput
+                      style={[styles.input, { color: colors.text }, focusedField === 'reps' && styles.focusedInput]}
+                      value={reps}
+                      onChangeText={setReps}
+                      placeholder="Reps (e.g., 3x10)"
+                      placeholderTextColor={colors.tabIconDefault}
+                      onFocus={() => { handleFocus('reps'); handleInputFocus(400); }}
+                      onBlur={handleBlur}
+                    />
+                  </View>
+                </>
+              )}
 
-            <View style={styles.formRow}>
-              <ThemedText style={styles.label}>Notes</ThemedText>
-              <TextInput
-                style={[styles.input, styles.textArea, { color: colors.text }]}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Additional notes"
-                placeholderTextColor={colors.tabIconDefault}
-                multiline
-                numberOfLines={4}
-                onFocus={() => handleInputFocus(500)}
-              />
-            </View>
-          </ThemedView>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              <View style={styles.formRow}>
+                <ThemedText style={styles.label}>Notes</ThemedText>
+                <TextInput
+                  style={[styles.input, styles.textArea, { color: colors.text }, focusedField === 'notes' && styles.focusedInput]}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Additional notes"
+                  placeholderTextColor={colors.tabIconDefault}
+                  multiline
+                  numberOfLines={4}
+                  onFocus={() => { handleFocus('notes'); handleInputFocus(500); }}
+                  onBlur={handleBlur}
+                />
+              </View>
+            </ThemedView>
+          </ScrollView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -504,5 +515,9 @@ const styles = StyleSheet.create({
   },
   typeOptionText: {
     fontSize: 16,
+  },
+  focusedInput: {
+    borderColor: Colors.light.primary,
+    borderWidth: 2,
   },
 }); 
