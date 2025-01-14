@@ -55,6 +55,8 @@ export default function TabLayout() {
         styles.iconContainer,
         position === 'beforePlus' && styles.beforePlusIcon,
         position === 'afterPlus' && styles.afterPlusIcon,
+        name === 'home' && styles.firstIcon,
+        name === 'cog' && styles.lastIcon,
       ]}>
         <Animated.View style={[styles.iconWrapper, animatedStyle]}>
           <Ionicons 
@@ -156,10 +158,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   beforePlusIcon: {
-    marginRight: 40,
+    marginRight: 50,
   },
   afterPlusIcon: {
-    marginLeft: 40,
+    marginLeft: 50,
+  },
+  firstIcon: {
+    marginLeft: -28,
+  },
+  lastIcon: {
+    marginRight: -28,
   },
   iconWrapper: {
     alignItems: 'center',
