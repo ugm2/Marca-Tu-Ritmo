@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Modal, FlatList, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Modal, FlatList, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
@@ -45,12 +45,11 @@ export default function AddWorkoutScreen() {
   const [description, setDescription] = useState(params.description as string || '');
   const [result, setResult] = useState(params.result as string || '');
 
+  const [scrollOffset, setScrollOffset] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const handleFocus = (field: string) => setFocusedField(field);
-  const handleBlur = () => setFocusedField(null);
 
   useEffect(() => {
     if (params.editMode === 'true' && params.workoutType === 'wod' && params.type) {
@@ -255,24 +254,39 @@ export default function AddWorkoutScreen() {
     );
   };
 
-  const handleInputFocus = (y: number) => {
-    scrollViewRef.current?.scrollTo({
-      y: y,
-      animated: true
-    });
+  const handleInputFocus = (fieldName: string, y: number) => {
+    setFocusedField(fieldName); // Highlight focused field
+    scrollViewRef.current?.scrollTo({ y, animated: true });
   };
+
+  const handleKeyboardDismiss = () => {
+    setFocusedField(null); // Remove highlight on keyboard dismiss
+  };
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setScrollOffset(event.nativeEvent.contentOffset.y);
+  };
+
+  useEffect(() => {
+    const keyboardHideListener = Keyboard.addListener('keyboardDidHide', handleKeyboardDismiss);
+    return () => {
+      keyboardHideListener.remove();
+    };
+  }, []);
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-          <ScrollView 
-            style={styles.scrollView} 
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+          <ScrollView
+            style={styles.scrollView}
+            ref={scrollViewRef}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
-            contentInsetAdjustmentBehavior="automatic"
           >
             <View style={styles.header}>
               <TouchableOpacity onPress={() => router.back()}>
@@ -285,6 +299,7 @@ export default function AddWorkoutScreen() {
             </View>
 
             <ThemedView style={styles.form}>
+              {/* Common Fields */}
               <View style={styles.formRow}>
                 <ThemedText style={styles.label}>Workout Type</ThemedText>
                 <View style={styles.typeSwitch}>
@@ -307,8 +322,8 @@ export default function AddWorkoutScreen() {
                   onChangeText={setName}
                   placeholder="Workout name"
                   placeholderTextColor={colors.tabIconDefault}
-                  onFocus={() => { handleFocus('name'); handleInputFocus(100); }}
-                  onBlur={handleBlur}
+                  onFocus={() => handleInputFocus('name', 100)}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
 
@@ -334,8 +349,8 @@ export default function AddWorkoutScreen() {
                       placeholderTextColor={colors.tabIconDefault}
                       multiline
                       numberOfLines={4}
-                      onFocus={() => { handleFocus('description'); handleInputFocus(300); }}
-                      onBlur={handleBlur}
+                      onFocus={() => handleInputFocus('description', 300)}
+                      onBlur={() => setFocusedField(null)}
                     />
                   </View>
 
@@ -347,8 +362,8 @@ export default function AddWorkoutScreen() {
                       onChangeText={setResult}
                       placeholder="Time/Rounds/Score"
                       placeholderTextColor={colors.tabIconDefault}
-                      onFocus={() => { handleFocus('result'); handleInputFocus(400); }}
-                      onBlur={handleBlur}
+                      onFocus={() => handleInputFocus('result', 400)}
+                      onBlur={() => setFocusedField(null)}
                     />
                   </View>
                 </>
@@ -363,8 +378,8 @@ export default function AddWorkoutScreen() {
                       placeholder="Weight (e.g., 70kg)"
                       placeholderTextColor={colors.tabIconDefault}
                       keyboardType="numeric"
-                      onFocus={() => { handleFocus('weight'); handleInputFocus(300); }}
-                      onBlur={handleBlur}
+                      onFocus={() => handleInputFocus('weight', 300)}
+                      onBlur={() => setFocusedField(null)}
                     />
                   </View>
 
@@ -376,8 +391,8 @@ export default function AddWorkoutScreen() {
                       onChangeText={setReps}
                       placeholder="Reps (e.g., 3x10)"
                       placeholderTextColor={colors.tabIconDefault}
-                      onFocus={() => { handleFocus('reps'); handleInputFocus(400); }}
-                      onBlur={handleBlur}
+                      onFocus={() => handleInputFocus('reps', 400)}
+                      onBlur={() => setFocusedField(null)}
                     />
                   </View>
                 </>
@@ -393,8 +408,8 @@ export default function AddWorkoutScreen() {
                   placeholderTextColor={colors.tabIconDefault}
                   multiline
                   numberOfLines={4}
-                  onFocus={() => { handleFocus('notes'); handleInputFocus(500); }}
-                  onBlur={handleBlur}
+                  onFocus={() => handleInputFocus('notes', 500)}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
             </ThemedView>

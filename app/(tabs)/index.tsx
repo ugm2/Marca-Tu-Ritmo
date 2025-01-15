@@ -9,6 +9,8 @@ import { Exercise, WOD, getAllLogs } from '../../app/utils/db';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
+import { FadeInView } from './_layout';
+import Animated, { FadeOut } from 'react-native-reanimated';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 
@@ -29,6 +31,12 @@ const motivationalQuotes = [
   "Success starts with self-discipline.",
 ];
 
+// Get daily quote based on the day of the year
+const getDailyQuote = () => {
+  const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
+  return motivationalQuotes[dayOfYear % motivationalQuotes.length];
+};
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -40,6 +48,7 @@ export default function HomeScreen() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
+  const [key, setKey] = useState(0);
 
   const getWeeklyWorkoutData = () => {
     const today = new Date();
@@ -105,117 +114,114 @@ export default function HomeScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
+      setKey(prev => prev + 1);
       loadWeeklyStats();
     }, [])
   );
 
-  if (isLoading) {
+  const Content = () => {
+    const weeklyData = getWeeklyWorkoutData();
+    
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading...</ThemedText>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const weeklyData = getWeeklyWorkoutData();
-
-  // Get daily quote based on the day of the year
-  const getDailyQuote = () => {
-    const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
-    return motivationalQuotes[dayOfYear % motivationalQuotes.length];
-  };
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView 
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+        <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="never"
         >
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>Weekly Progress</ThemedText>
-          <ThemedText style={styles.date}>{format(new Date(), 'MMMM d, yyyy')}</ThemedText>
-        </View>
-
-        {/* Motivation Card */}
-        <ThemedView style={[styles.card, { backgroundColor: colors.primary }]}>
-          <ThemedText style={styles.quoteText}>{getDailyQuote()}</ThemedText>
-        </ThemedView>
-
-        {/* Weekly Activity */}
-        <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-          <ThemedText style={styles.cardTitle}>Weekly Activity</ThemedText>
-          <View style={styles.weeklyActivityContainer}>
-            {weeklyData.data.map((count, index) => {
-              const isToday = weeklyData.labels[index] === format(new Date(), 'EEE');
-              return (
-                <View key={index} style={styles.dayContainer}>
-                  <ThemedText style={[
-                    styles.dayLabel,
-                    isToday && styles.todayLabel
-                  ]}>{weeklyData.labels[index]}</ThemedText>
-                  <View style={styles.activityWrapper}>
-                    <View style={[
-                      styles.activityIndicator,
-                      {
-                        backgroundColor: colors.primary + (isToday ? '30' : '20'),
-                        height: Math.min(90, Math.max(30, count * 25)),
-                      },
-                      isToday && { borderWidth: 2, borderColor: colors.primary }
-                    ]}>
-                      <View style={[
-                        styles.activityFill,
-                        {
-                          backgroundColor: colors.primary,
-                          height: '100%',
-                          opacity: Math.min(0.3 + (count * 0.2), 1),
-                        }
-                      ]} />
-                    </View>
-                  </View>
-                  <ThemedText style={[
-                    styles.countLabel,
-                    isToday && styles.todayLabel
-                  ]}>{count}</ThemedText>
-                </View>
-              );
-            })}
+          <View style={styles.header}>
+            <ThemedText style={styles.title}>Weekly Progress</ThemedText>
+            <ThemedText style={styles.date}>{format(new Date(), 'MMMM d, yyyy')}</ThemedText>
           </View>
-        </ThemedView>
 
-        {/* Weekly Stats */}
-        <View style={styles.statsContainer}>
-          <ThemedView style={[styles.statsCard, { backgroundColor: colors.cardBackground }]}>
-            <View style={styles.statItem}>
-              <Ionicons name="fitness" size={24} color={colors.primary} />
-              <ThemedText style={styles.statNumber}>{weeklyStats.totalWorkouts}</ThemedText>
-              <ThemedText style={styles.statLabel}>Total Workouts</ThemedText>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="flame" size={24} color={colors.primary} />
-              <ThemedText style={styles.statNumber}>{weeklyStats.streakDays}</ThemedText>
-              <ThemedText style={styles.statLabel}>Day Streak</ThemedText>
-            </View>
+          {/* Motivation Card */}
+          <ThemedView style={[styles.card, { backgroundColor: colors.primary }]}>
+            <ThemedText style={styles.quoteText}>{getDailyQuote()}</ThemedText>
           </ThemedView>
 
-          <View style={styles.statsRow}>
-            <ThemedView style={[styles.statsCardHalf, { backgroundColor: colors.cardBackground }]}>
-              <Ionicons name="barbell" size={24} color={colors.primary} />
-              <ThemedText style={styles.statNumber}>{weeklyStats.strengthWorkouts}</ThemedText>
-              <ThemedText style={styles.statLabel}>Strength</ThemedText>
-            </ThemedView>
-            <ThemedView style={[styles.statsCardHalf, { backgroundColor: colors.cardBackground }]}>
-              <Ionicons name="stopwatch" size={24} color={colors.primary} />
-              <ThemedText style={styles.statNumber}>{weeklyStats.wodWorkouts}</ThemedText>
-              <ThemedText style={styles.statLabel}>WODs</ThemedText>
-            </ThemedView>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          {!isLoading && (
+            <>
+              {/* Weekly Activity */}
+              <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                <ThemedText style={styles.cardTitle}>Weekly Activity</ThemedText>
+                <View style={styles.weeklyActivityContainer}>
+                  {weeklyData.data.map((count: number, index: number) => {
+                    const isToday = weeklyData.labels[index] === format(new Date(), 'EEE');
+                    return (
+                      <View key={index} style={styles.dayContainer}>
+                        <ThemedText style={[
+                          styles.dayLabel,
+                          isToday && styles.todayLabel
+                        ]}>{weeklyData.labels[index]}</ThemedText>
+                        <View style={styles.activityWrapper}>
+                          <View style={[
+                            styles.activityIndicator,
+                            {
+                              backgroundColor: colors.primary + (isToday ? '30' : '20'),
+                              height: Math.min(90, Math.max(30, count * 25)),
+                            },
+                            isToday && { borderWidth: 2, borderColor: colors.primary }
+                          ]}>
+                            <View style={[
+                              styles.activityFill,
+                              {
+                                backgroundColor: colors.primary,
+                                height: '100%',
+                                opacity: Math.min(0.3 + (count * 0.2), 1),
+                              }
+                            ]} />
+                          </View>
+                        </View>
+                        <ThemedText style={[
+                          styles.countLabel,
+                          isToday && styles.todayLabel
+                        ]}>{count}</ThemedText>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ThemedView>
+
+              {/* Weekly Stats */}
+              <View style={styles.statsContainer}>
+                <ThemedView style={[styles.statsCard, { backgroundColor: colors.cardBackground }]}>
+                  <View style={styles.statItem}>
+                    <Ionicons name="fitness" size={24} color={colors.primary} />
+                    <ThemedText style={styles.statNumber}>{weeklyStats.totalWorkouts}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Total Workouts</ThemedText>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Ionicons name="flame" size={24} color={colors.primary} />
+                    <ThemedText style={styles.statNumber}>{weeklyStats.streakDays}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Day Streak</ThemedText>
+                  </View>
+                </ThemedView>
+
+                <View style={styles.statsRow}>
+                  <ThemedView style={[styles.statsCardHalf, { backgroundColor: colors.cardBackground }]}>
+                    <Ionicons name="barbell" size={24} color={colors.primary} />
+                    <ThemedText style={styles.statNumber}>{weeklyStats.strengthWorkouts}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Strength</ThemedText>
+                  </ThemedView>
+                  <ThemedView style={[styles.statsCardHalf, { backgroundColor: colors.cardBackground }]}>
+                    <Ionicons name="stopwatch" size={24} color={colors.primary} />
+                    <ThemedText style={styles.statNumber}>{weeklyStats.wodWorkouts}</ThemedText>
+                    <ThemedText style={styles.statLabel}>WODs</ThemedText>
+                  </ThemedView>
+                </View>
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
+
+  return (
+    <FadeInView key={key}>
+      <Content />
+    </FadeInView>
   );
 }
 
@@ -232,7 +238,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 8,
   },
   title: {
@@ -247,8 +253,19 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
     marginVertical: 8,
-    padding: 16,
+    padding: 20,
     borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   quoteText: {
     fontSize: 16,
@@ -291,7 +308,7 @@ const styles = StyleSheet.create({
   },
   statsCard: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 20,
     borderRadius: 16,
     marginBottom: 12,
     ...Platform.select({

@@ -39,10 +39,6 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
-
   return (
     <SettingsProvider>
       <RootLayoutNav />
@@ -57,9 +53,35 @@ function RootLayoutNav() {
     <PortalProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="add-workout" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack
+            screenOptions={{
+              animation: 'slide_from_right',
+              animationDuration: 200,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+              fullScreenGestureEnabled: true,
+              headerShown: false,
+              contentStyle: {
+                backgroundColor: colorScheme === 'dark' ? '#000' : '#fff',
+              },
+            }}
+          >
+            <Stack.Screen 
+              name="(tabs)" 
+              options={{ 
+                headerShown: false,
+                animation: 'fade',
+              }} 
+            />
+            <Stack.Screen 
+              name="add-workout" 
+              options={{ 
+                presentation: 'modal',
+                headerShown: false,
+                animation: 'slide_from_bottom',
+                gestureDirection: 'vertical',
+              }} 
+            />
           </Stack>
         </GestureHandlerRootView>
       </ThemeProvider>

@@ -11,6 +11,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { format, subDays, subMonths } from 'date-fns';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Portal } from '@gorhom/portal';
+import { FadeInView } from './_layout';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 type DateFilter = 'all' | 'week' | 'month' | '3months';
@@ -36,6 +37,7 @@ export default function LogsScreen() {
   const { settings } = useSettings();
   const router = useRouter();
   const slideAnim = React.useRef(new Animated.Value(0)).current;
+  const [key, setKey] = useState(0);
 
   const applyFilters = useCallback((logsToFilter: WorkoutLog[]) => {
     let filtered = [...logsToFilter];
@@ -151,6 +153,7 @@ export default function LogsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setKey(prev => prev + 1);
       loadLogs();
     }, [loadLogs])
   );
@@ -499,19 +502,11 @@ export default function LogsScreen() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading logs...</ThemedText>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const Content = () => {
+    if (isLoading) return null;
 
-  return (
-    <>
-      <SafeAreaView style={styles.container} edges={['top']}>
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
@@ -616,8 +611,14 @@ export default function LogsScreen() {
           </View>
         </Modal>
       </SafeAreaView>
+    );
+  };
+
+  return (
+    <FadeInView key={key}>
+      <Content />
       <FilterPanel />
-    </>
+    </FadeInView>
   );
 }
 
@@ -839,7 +840,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
+    marginTop: 0,
   },
   filterButton: {
     padding: 8,

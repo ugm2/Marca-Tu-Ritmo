@@ -9,7 +9,7 @@ const tintColorDark = '#fff';
 export default {
   light: {
     text: '#1A1A1A',
-    background: '#FFFFFF',
+    background: '#f5f5f5',
     tint: tintColorLight,
     tabIconDefault: '#94A3B8',
     tabIconSelected: '#FFFFFF',
@@ -18,6 +18,7 @@ export default {
     accent: '#FFB74D',
     cardBackground: '#F5F3FF',
     tabBarBackground: '#FFFFFF',
+    tabBarActiveTintColor: '#b8a8fd',
   },
   dark: {
     text: '#FFFFFF',
@@ -30,5 +31,6 @@ export default {
     accent: '#FFB74D',
     cardBackground: '#1A1A1A',
     tabBarBackground: '#000000',
+    tabBarActiveTintColor: '#b8a8fd',
   },
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
@@ -7,11 +7,20 @@ import Colors from '../../constants/Colors';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../../contexts/SettingsContext';
+import { FadeInView } from './_layout';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { settings, updateSettings } = useSettings();
+  const [key, setKey] = useState(0);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      setKey(prev => prev + 1);
+    }, [])
+  );
 
   const SettingItem = ({ 
     icon, 
@@ -45,7 +54,7 @@ export default function SettingsScreen() {
     </ThemedView>
   );
 
-  return (
+  const Content = () => (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView 
@@ -69,6 +78,12 @@ export default function SettingsScreen() {
         </ScrollView>
       </SafeAreaView>
     </View>
+  );
+
+  return (
+    <FadeInView key={key}>
+      <Content />
+    </FadeInView>
   );
 }
 

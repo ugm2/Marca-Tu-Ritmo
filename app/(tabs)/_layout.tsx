@@ -8,12 +8,24 @@ import Animated, {
   withTiming,
   useSharedValue,
   withSequence,
+  FadeInDown,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { router } from 'expo-router';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TAB_BAR_WIDTH = 350;
+
+export const FadeInView = ({ children, style }: { children: React.ReactNode, style?: any }) => {
+  return (
+    <Animated.View 
+      entering={FadeInDown.duration(300).springify()}
+      style={[{ flex: 1 }, style]}
+    >
+      {children}
+    </Animated.View>
+  );
+};
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -44,7 +56,7 @@ export default function TabLayout() {
     const animatedStyle = useAnimatedStyle(() => {
       return {
         transform: [{ scale: scale.value }],
-        backgroundColor: withTiming(focused ? '#000000' : 'transparent', {
+        backgroundColor: withTiming(focused ? colors.tabBarActiveTintColor : 'transparent', {
           duration: 200,
         }),
       };
@@ -62,7 +74,7 @@ export default function TabLayout() {
           <Ionicons 
             name={name} 
             size={28}
-            color={focused ? '#FFFFFF' : colors.tabIconDefault}
+            color={focused ? colors.tabIconSelected : colors.tabIconDefault}
           />
         </Animated.View>
       </View>
@@ -96,6 +108,7 @@ export default function TabLayout() {
           },
           headerShown: false,
           tabBarShowLabel: false,
+          tabBarHideOnKeyboard: true,
         }}>
         <Tabs.Screen
           name="index"
@@ -137,7 +150,6 @@ export default function TabLayout() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -200,3 +212,4 @@ const styles = StyleSheet.create({
     }),
   },
 });
+

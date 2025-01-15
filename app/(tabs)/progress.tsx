@@ -12,6 +12,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays } from 'date
 import { useSettings } from '../../contexts/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
+import { FadeInView } from './_layout';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 
@@ -24,6 +25,7 @@ export default function ProgressScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const { settings } = useSettings();
   const screenWidth = Dimensions.get('window').width;
+  const [key, setKey] = useState(0);
 
   const loadLogs = useCallback(async () => {
     try {
@@ -62,6 +64,7 @@ export default function ProgressScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setKey(prev => prev + 1);
       loadLogs();
     }, [loadLogs])
   );
@@ -207,167 +210,167 @@ export default function ProgressScreen() {
     .sort((a, b) => b.bestAttempt.weight - a.bestAttempt.weight);
   };
 
-  if (isLoading) {
+  const Content = () => {
+    if (isLoading) return null;
+
+    const typeDistribution = getWorkoutTypeDistribution();
+    const exerciseProgress = getExerciseProgressData();
+
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading progress data...</ThemedText>
-        </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="never"
+        >
+          <View style={styles.header}>
+            <ThemedText style={styles.title}>Progress Insights</ThemedText>
+            <View style={[styles.searchContainer, { backgroundColor: colors.cardBackground }]}>
+              <Ionicons 
+                name="search" 
+                size={20} 
+                color={colors.text} 
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search exercises..."
+                placeholderTextColor={colors.text + '80'}
+                value={searchQuery}
+                onChangeText={handleSearch}
+              />
+              {searchQuery !== '' && (
+                <TouchableOpacity 
+                  onPress={() => handleSearch('')}
+                  style={styles.clearButton}
+                >
+                  <Ionicons 
+                    name="close-circle" 
+                    size={20} 
+                    color={colors.text}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {logs.length > 0 ? (
+            <>
+              {getPRData()
+                .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .length > 0 ? (
+                <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                  <ThemedText style={styles.cardTitle}>Personal Records</ThemedText>
+                  <View style={styles.prGrid}>
+                    {getPRData()
+                      .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((exercise, index) => {
+                      return (
+                        <View 
+                          key={index} 
+                          style={[
+                            styles.prCard,
+                            { backgroundColor: colors.primary + '10' }
+                          ]}
+                        >
+                          <View style={styles.prHeader}>
+                            <ThemedText style={styles.prExerciseName}>
+                              {exercise.name}
+                            </ThemedText>
+                            <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
+                              <ThemedText style={styles.prLabel}>
+                                {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <ThemedText style={styles.prWeight}>
+                            {settings.useMetric ? 
+                              `${exercise.bestAttempt.weight}kg` : 
+                              `${Math.round(exercise.bestAttempt.weight * 2.20462)}lb`}
+                          </ThemedText>
+                          <ThemedText style={styles.prDate}>
+                            {format(exercise.bestAttempt.date, 'MMM d, yyyy')}
+                          </ThemedText>
+                          {exercise.identicalAttempts >= 3 && (
+                            <ThemedText style={styles.prSuggestion}>
+                              You've done this {exercise.identicalAttempts} times - try increasing the weight!
+                            </ThemedText>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ThemedView>
+              ) : searchQuery !== '' && (
+                <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                  <View style={styles.noResultsContainer}>
+                    <Ionicons 
+                      name="search-outline" 
+                      size={48} 
+                      color={colors.text + '40'}
+                      style={styles.noResultsIcon}
+                    />
+                    <ThemedText style={styles.noResultsTitle}>No records found</ThemedText>
+                    <ThemedText style={styles.noResultsText}>
+                      No personal records match your search for "{searchQuery}"
+                    </ThemedText>
+                  </View>
+                </ThemedView>
+              )}
+            </>
+          ) : (
+            <ThemedText style={styles.noDataText}>No workout data available</ThemedText>
+          )}
+
+          {filteredExercises.map((exercise, index) => (
+            <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground}]}>
+              <ThemedText style={styles.cardTitle}>{exercise.name} Progress</ThemedText>
+              <View style={styles.chartWrapper}>
+                <LineChart
+                  data={{
+                    labels: exercise.dates,
+                    datasets: [{ 
+                      data: exercise.data,
+                      color: (opacity = 1) => colors.primary + Math.round(opacity * 255).toString(16).padStart(2, '0'),
+                      strokeWidth: 3,
+                    }]
+                  }}
+                  width={screenWidth - 48}
+                  height={220}
+                  chartConfig={{
+                    ...chartConfig,
+                    fillShadowGradientFrom: colors.primary,
+                    fillShadowGradientFromOpacity: 0.5,
+                    fillShadowGradientTo: colors.cardBackground,
+                    fillShadowGradientToOpacity: 0.1,
+                  }}
+                  style={styles.chart}
+                  bezier
+                  withDots
+                  withInnerLines={false}
+                  withOuterLines={false}
+                  withVerticalLabels
+                  withHorizontalLabels
+                  withShadow={false}
+                  yAxisLabel=""
+                  yAxisSuffix={settings.useMetric ? "kg" : "lb"}
+                />
+              </View>
+              <ThemedText style={styles.chartLabel}>
+                All {exercise.data.length} sessions
+              </ThemedText>
+            </ThemedView>
+          ))}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
       </SafeAreaView>
     );
-  }
-
-  const typeDistribution = getWorkoutTypeDistribution();
-  const exerciseProgress = getExerciseProgressData();
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
-      >
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>Progress Insights</ThemedText>
-          <View style={[styles.searchContainer, { backgroundColor: colors.cardBackground }]}>
-            <Ionicons 
-              name="search" 
-              size={20} 
-              color={colors.text} 
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search exercises..."
-              placeholderTextColor={colors.text + '80'}
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-            {searchQuery !== '' && (
-              <TouchableOpacity 
-                onPress={() => handleSearch('')}
-                style={styles.clearButton}
-              >
-                <Ionicons 
-                  name="close-circle" 
-                  size={20} 
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {logs.length > 0 ? (
-          <>
-            {getPRData()
-              .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
-              .length > 0 ? (
-              <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                <ThemedText style={styles.cardTitle}>Personal Records</ThemedText>
-                <View style={styles.prGrid}>
-                  {getPRData()
-                    .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((exercise, index) => {
-                    return (
-                      <View 
-                        key={index} 
-                        style={[
-                          styles.prCard,
-                          { backgroundColor: colors.primary + '10' }
-                        ]}
-                      >
-                        <View style={styles.prHeader}>
-                          <ThemedText style={styles.prExerciseName}>
-                            {exercise.name}
-                          </ThemedText>
-                          <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
-                            <ThemedText style={styles.prLabel}>
-                              {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
-                            </ThemedText>
-                          </View>
-                        </View>
-                        <ThemedText style={styles.prWeight}>
-                          {settings.useMetric ? 
-                            `${exercise.bestAttempt.weight}kg` : 
-                            `${Math.round(exercise.bestAttempt.weight * 2.20462)}lb`}
-                        </ThemedText>
-                        <ThemedText style={styles.prDate}>
-                          {format(exercise.bestAttempt.date, 'MMM d, yyyy')}
-                        </ThemedText>
-                        {exercise.identicalAttempts >= 3 && (
-                          <ThemedText style={styles.prSuggestion}>
-                            You've done this {exercise.identicalAttempts} times - try increasing the weight!
-                          </ThemedText>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              </ThemedView>
-            ) : searchQuery !== '' && (
-              <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                <View style={styles.noResultsContainer}>
-                  <Ionicons 
-                    name="search-outline" 
-                    size={48} 
-                    color={colors.text + '40'}
-                    style={styles.noResultsIcon}
-                  />
-                  <ThemedText style={styles.noResultsTitle}>No records found</ThemedText>
-                  <ThemedText style={styles.noResultsText}>
-                    No personal records match your search for "{searchQuery}"
-                  </ThemedText>
-                </View>
-              </ThemedView>
-            )}
-          </>
-        ) : (
-          <ThemedText style={styles.noDataText}>No workout data available</ThemedText>
-        )}
-
-        {filteredExercises.map((exercise, index) => (
-          <ThemedView key={index} style={[styles.card, { backgroundColor: colors.cardBackground}]}>
-            <ThemedText style={styles.cardTitle}>{exercise.name} Progress</ThemedText>
-            <View style={styles.chartWrapper}>
-              <LineChart
-                data={{
-                  labels: exercise.dates,
-                  datasets: [{ 
-                    data: exercise.data,
-                    color: (opacity = 1) => colors.primary + Math.round(opacity * 255).toString(16).padStart(2, '0'),
-                    strokeWidth: 3,
-                  }]
-                }}
-                width={screenWidth - 48}
-                height={220}
-                chartConfig={{
-                  ...chartConfig,
-                  fillShadowGradientFrom: colors.primary,
-                  fillShadowGradientFromOpacity: 0.5,
-                  fillShadowGradientTo: colors.cardBackground,
-                  fillShadowGradientToOpacity: 0.1,
-                }}
-                style={styles.chart}
-                bezier
-                withDots
-                withInnerLines={false}
-                withOuterLines={false}
-                withVerticalLabels
-                withHorizontalLabels
-                withShadow={false}
-                yAxisLabel=""
-                yAxisSuffix={settings.useMetric ? "kg" : "lb"}
-              />
-            </View>
-            <ThemedText style={styles.chartLabel}>
-              All {exercise.data.length} sessions
-            </ThemedText>
-          </ThemedView>
-        ))}
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
-    </SafeAreaView>
+    <FadeInView key={key}>
+      <Content />
+    </FadeInView>
   );
 }
 
@@ -395,7 +398,6 @@ const styles = StyleSheet.create({
     marginTop: 0,
     padding: 16,
     borderRadius: 16,
-    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
