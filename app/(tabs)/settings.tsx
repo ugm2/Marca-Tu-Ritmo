@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
@@ -7,8 +7,7 @@ import Colors from '../../constants/Colors';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../../contexts/SettingsContext';
-import { FadeInView } from './_layout';
-import { useFocusEffect } from '@react-navigation/native';
+import { AnimatedTabScreen } from '../../components/AnimatedTabScreen';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -16,11 +15,9 @@ export default function SettingsScreen() {
   const { settings, updateSettings } = useSettings();
   const [key, setKey] = useState(0);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      setKey(prev => prev + 1);
-    }, [])
-  );
+  const handleScreenFocus = useCallback(async () => {
+    setKey(prev => prev + 1);
+  }, []);
 
   const SettingItem = ({ 
     icon, 
@@ -81,9 +78,9 @@ export default function SettingsScreen() {
   );
 
   return (
-    <FadeInView key={key}>
+    <AnimatedTabScreen onScreenFocus={handleScreenFocus}>
       <Content />
-    </FadeInView>
+    </AnimatedTabScreen>
   );
 }
 

@@ -18,7 +18,7 @@ export default {
     accent: '#FFB74D',
     cardBackground: '#F5F3FF',
     tabBarBackground: '#FFFFFF',
-    tabBarActiveTintColor: '#b8a8fd',
+    tabBarActiveTintColor: '#8f76ff',
   },
   dark: {
     text: '#FFFFFF',

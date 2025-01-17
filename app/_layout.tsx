@@ -76,7 +76,7 @@ function RootLayoutNav() {
             <Stack.Screen 
               name="add-workout" 
               options={{ 
-                presentation: 'modal',
+                presentation: 'containedModal',
                 headerShown: false,
                 animation: 'slide_from_bottom',
                 gestureDirection: 'vertical',

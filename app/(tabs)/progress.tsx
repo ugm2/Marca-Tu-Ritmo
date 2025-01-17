@@ -1,18 +1,17 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { StyleSheet, View, ScrollView, Dimensions, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import Colors from '../../constants/Colors';
 import { useColorScheme } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import { Exercise, WOD, getAllLogs } from '../../app/utils/db';
-import { LineChart, PieChart, ContributionGraph } from 'react-native-chart-kit';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays } from 'date-fns';
+import { LineChart } from 'react-native-chart-kit';
+import { format } from 'date-fns';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
-import { FadeInView } from './_layout';
+import { AnimatedTabScreen } from '../../components/AnimatedTabScreen';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 
@@ -25,7 +24,7 @@ export default function ProgressScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const { settings } = useSettings();
   const screenWidth = Dimensions.get('window').width;
-  const [key, setKey] = useState(0);
+  const searchRef = useRef<string>('');
 
   const loadLogs = useCallback(async () => {
     try {
@@ -54,7 +53,11 @@ export default function ProgressScreen() {
           };
         }
       });
-      setLogs(typedLogs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      const sortedLogs = typedLogs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setLogs(sortedLogs);
+      
+      const exerciseProgress = getExerciseProgressData(sortedLogs);
+      setFilteredExercises(exerciseProgress);
     } catch (error) {
       console.error('Error loading logs:', error);
     } finally {
@@ -62,31 +65,8 @@ export default function ProgressScreen() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setKey(prev => prev + 1);
-      loadLogs();
-    }, [loadLogs])
-  );
-
-  const getWorkoutTypeDistribution = () => {
-    const wodCount = logs.filter(log => log.type === 'wod').length;
-    const exerciseCount = logs.filter(log => log.type === 'exercise').length;
-    const total = wodCount + exerciseCount;
-
-    if (total === 0) return { labels: ['WODs', 'Exercises'], data: [0, 0] };
-
-    return {
-      labels: ['WODs', 'Exercises'],
-      data: [
-        Math.round((wodCount / total) * 100),
-        Math.round((exerciseCount / total) * 100)
-      ]
-    };
-  };
-
-  const getExerciseProgressData = () => {
-    const exerciseLogs = logs.filter(log => log.type === 'exercise') as Exercise[];
+  const getExerciseProgressData = useCallback((currentLogs: WorkoutLog[]) => {
+    const exerciseLogs = currentLogs.filter(log => log.type === 'exercise') as Exercise[];
     const exerciseNames = [...new Set(exerciseLogs.map(log => log.name))];
     
     return exerciseNames.map(name => {
@@ -95,7 +75,7 @@ export default function ProgressScreen() {
         .map(log => ({
           date: new Date(log.date),
           weight: typeof log.weight === 'string' ? 
-            parseFloat(log.weight) || 0 : // Use 0 if parsing fails
+            parseFloat(log.weight) || 0 : 
             (log.weight || 0)
         }))
         .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -110,8 +90,21 @@ export default function ProgressScreen() {
       exercise.data.every(weight => typeof weight === 'number' && !isNaN(weight))
     )
     .sort((a, b) => b.data.length - a.data.length)
-    .slice(0, 5); // Show top 5 most tracked exercises
-  };
+    .slice(0, 5);
+  }, []);
+
+  const handleSearch = useCallback((text: string) => {
+    const searchTerm = text.toLowerCase();
+    const exerciseProgress = getExerciseProgressData(logs);
+    const filtered = exerciseProgress.filter(exercise => 
+      exercise.name.toLowerCase().includes(searchTerm)
+    );
+    setFilteredExercises(filtered);
+  }, [logs, getExerciseProgressData]);
+
+  const handleScreenFocus = useCallback(async () => {
+    await loadLogs();
+  }, [loadLogs]);
 
   const chartConfig = {
     backgroundGradientFrom: colors.cardBackground,
@@ -131,23 +124,6 @@ export default function ProgressScreen() {
     fillShadowGradientFrom: colors.primary,
     fillShadowGradientTo: colors.cardBackground,
   };
-
-  const handleSearch = useCallback((text: string) => {
-    setSearchQuery(text);
-    const searchTerm = text.toLowerCase();
-    const exerciseProgress = getExerciseProgressData();
-    const filtered = exerciseProgress.filter(exercise => 
-      exercise.name.toLowerCase().includes(searchTerm)
-    );
-    setFilteredExercises(filtered);
-  }, [logs]);
-
-  useEffect(() => {
-    if (logs.length > 0) {
-      const exerciseProgress = getExerciseProgressData();
-      setFilteredExercises(exerciseProgress);
-    }
-  }, [logs]);
 
   const getPRData = () => {
     const exerciseLogs = logs.filter(log => log.type === 'exercise') as Exercise[];
@@ -213,15 +189,11 @@ export default function ProgressScreen() {
   const Content = () => {
     if (isLoading) return null;
 
-    const typeDistribution = getWorkoutTypeDistribution();
-    const exerciseProgress = getExerciseProgressData();
-
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="never"
         >
           <View style={styles.header}>
             <ThemedText style={styles.title}>Progress Insights</ThemedText>
@@ -234,89 +206,101 @@ export default function ProgressScreen() {
               />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search exercises..."
+                placeholder="Search workouts..."
                 placeholderTextColor={colors.text + '80'}
-                value={searchQuery}
-                onChangeText={handleSearch}
+                defaultValue={searchRef.current}
+                onChangeText={(text) => {
+                  searchRef.current = text;
+                }}
+                onSubmitEditing={() => {
+                  setSearchQuery(searchRef.current);
+                  handleSearch(searchRef.current);
+                }}
               />
               {searchQuery !== '' && (
-                <TouchableOpacity 
-                  onPress={() => handleSearch('')}
-                  style={styles.clearButton}
-                >
-                  <Ionicons 
-                    name="close-circle" 
-                    size={20} 
-                    color={colors.text}
-                  />
-                </TouchableOpacity>
-              )}
+                  <TouchableOpacity 
+                    onPress={() => {
+                      searchRef.current = '';
+                      setSearchQuery('');
+                      handleSearch('');
+                    }}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons 
+                      name="close-circle" 
+                      size={20} 
+                      color={colors.text}
+                    />
+                  </TouchableOpacity>
+                )}
             </View>
           </View>
 
           {logs.length > 0 ? (
             <>
-              {getPRData()
-                .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                .length > 0 ? (
-                <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                  <ThemedText style={styles.cardTitle}>Personal Records</ThemedText>
-                  <View style={styles.prGrid}>
-                    {getPRData()
-                      .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map((exercise, index) => {
-                      return (
-                        <View 
-                          key={index} 
-                          style={[
-                            styles.prCard,
-                            { backgroundColor: colors.primary + '10' }
-                          ]}
-                        >
-                          <View style={styles.prHeader}>
-                            <ThemedText style={styles.prExerciseName}>
-                              {exercise.name}
-                            </ThemedText>
-                            <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
-                              <ThemedText style={styles.prLabel}>
-                                {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
+              <View style={styles.logsContainer}>
+                {getPRData()
+                  .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .length > 0 ? (
+                  <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                    <ThemedText style={styles.cardTitle}>Personal Records</ThemedText>
+                    <View style={styles.prGrid}>
+                      {getPRData()
+                        .filter(exercise => exercise.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .map((exercise, index) => {
+                          return (
+                            <View 
+                              key={index} 
+                              style={[
+                                styles.prCard,
+                                { backgroundColor: colors.primary + '10' }
+                              ]}
+                            >
+                              <View style={styles.prHeader}>
+                                <ThemedText style={styles.prExerciseName}>
+                                  {exercise.name}
+                                </ThemedText>
+                                <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
+                                  <ThemedText style={styles.prLabel}>
+                                    {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
+                                  </ThemedText>
+                                </View>
+                              </View>
+                              <ThemedText style={styles.prWeight}>
+                                {settings.useMetric ? 
+                                  `${exercise.bestAttempt.weight}kg` : 
+                                  `${Math.round(exercise.bestAttempt.weight * 2.20462)}lb`}
                               </ThemedText>
+                              <ThemedText style={styles.prDate}>
+                                {format(exercise.bestAttempt.date, 'MMM d, yyyy')}
+                              </ThemedText>
+                              {exercise.identicalAttempts >= 3 && (
+                                <ThemedText style={styles.prSuggestion}>
+                                  You've done this {exercise.identicalAttempts} times - try increasing the weight!
+                                </ThemedText>
+                              )}
                             </View>
-                          </View>
-                          <ThemedText style={styles.prWeight}>
-                            {settings.useMetric ? 
-                              `${exercise.bestAttempt.weight}kg` : 
-                              `${Math.round(exercise.bestAttempt.weight * 2.20462)}lb`}
-                          </ThemedText>
-                          <ThemedText style={styles.prDate}>
-                            {format(exercise.bestAttempt.date, 'MMM d, yyyy')}
-                          </ThemedText>
-                          {exercise.identicalAttempts >= 3 && (
-                            <ThemedText style={styles.prSuggestion}>
-                              You've done this {exercise.identicalAttempts} times - try increasing the weight!
-                            </ThemedText>
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                </ThemedView>
-              ) : searchQuery !== '' && (
-                <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                  <View style={styles.noResultsContainer}>
-                    <Ionicons 
-                      name="search-outline" 
-                      size={48} 
-                      color={colors.text + '40'}
-                      style={styles.noResultsIcon}
-                    />
-                    <ThemedText style={styles.noResultsTitle}>No records found</ThemedText>
-                    <ThemedText style={styles.noResultsText}>
-                      No personal records match your search for "{searchQuery}"
-                    </ThemedText>
-                  </View>
-                </ThemedView>
-              )}
+                          );
+                        })}
+                    </View>
+                  </ThemedView>
+                ) : searchQuery !== '' && (
+                  <ThemedView style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                    <View style={styles.noResultsContainer}>
+                      <Ionicons 
+                        name="search-outline" 
+                        size={48} 
+                        color={colors.text + '40'}
+                        style={styles.noResultsIcon}
+                      />
+                      <ThemedText style={styles.noResultsTitle}>No records found</ThemedText>
+                      <ThemedText style={styles.noResultsText}>
+                        No personal records match your search for "{searchQuery}"
+                      </ThemedText>
+                    </View>
+                  </ThemedView>
+                )}
+              </View>
             </>
           ) : (
             <ThemedText style={styles.noDataText}>No workout data available</ThemedText>
@@ -368,9 +352,9 @@ export default function ProgressScreen() {
   };
 
   return (
-    <FadeInView key={key}>
+    <AnimatedTabScreen onScreenFocus={handleScreenFocus}>
       <Content />
-    </FadeInView>
+    </AnimatedTabScreen>
   );
 }
 
@@ -590,5 +574,8 @@ const styles = StyleSheet.create({
     color: Colors.light.primary,
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  logsContainer: {
+    paddingTop: 20,
   },
 }); 

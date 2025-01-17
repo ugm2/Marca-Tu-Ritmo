@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Platform, Dimensions } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { StyleSheet, View, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import Colors from '../../constants/Colors';
 import { useColorScheme } from 'react-native';
 import { Exercise, WOD, getAllLogs } from '../../app/utils/db';
-import { useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
-import { FadeInView } from './_layout';
-import Animated, { FadeOut } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { AnimatedTabScreen } from '../../components/AnimatedTabScreen';
 
 type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
 
@@ -48,7 +46,6 @@ export default function HomeScreen() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
-  const [key, setKey] = useState(0);
 
   const getWeeklyWorkoutData = () => {
     const today = new Date();
@@ -67,7 +64,7 @@ export default function HomeScreen() {
     return { labels, data };
   };
 
-  const loadWeeklyStats = async () => {
+  const loadWeeklyStats = useCallback(async () => {
     try {
       setIsLoading(true);
       const allLogs = await getAllLogs();
@@ -110,24 +107,21 @@ export default function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      setKey(prev => prev + 1);
-      loadWeeklyStats();
-    }, [])
-  );
+  const handleScreenFocus = useCallback(async () => {
+    await loadWeeklyStats();
+  }, [loadWeeklyStats]);
 
   const Content = () => {
     const weeklyData = getWeeklyWorkoutData();
     
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="never"
+          contentInsetAdjustmentBehavior="automatic"
         >
           <View style={styles.header}>
             <ThemedText style={styles.title}>Weekly Progress</ThemedText>
@@ -219,9 +213,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <FadeInView key={key}>
+    <AnimatedTabScreen onScreenFocus={handleScreenFocus}>
       <Content />
-    </FadeInView>
+    </AnimatedTabScreen>
   );
 }
 
