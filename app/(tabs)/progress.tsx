@@ -194,6 +194,7 @@ export default function ProgressScreen() {
         <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
         >
           <View style={styles.header}>
             <ThemedText style={styles.title}>Progress Insights</ThemedText>
@@ -260,11 +261,13 @@ export default function ProgressScreen() {
                                 <ThemedText style={styles.prExerciseName}>
                                   {exercise.name}
                                 </ThemedText>
-                                <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
-                                  <ThemedText style={styles.prLabel}>
-                                    {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
+                                {!Number.isNaN(exercise.bestAttempt.reps) && (
+                                  <View style={[styles.prBadge, { backgroundColor: colors.primary }]}>
+                                    <ThemedText style={styles.prLabel}>
+                                      {exercise.bestAttempt.reps} {exercise.bestAttempt.reps === 1 ? 'rep' : 'reps'}
                                   </ThemedText>
                                 </View>
+                                )}
                               </View>
                               <ThemedText style={styles.prWeight}>
                                 {settings.useMetric ? 
@@ -467,6 +470,8 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 50,
+    justifyContent: 'center',
     marginTop: 16,
     borderRadius: 12,
     paddingHorizontal: 12,
