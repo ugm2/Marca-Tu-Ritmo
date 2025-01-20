@@ -1,8 +1,7 @@
 <img src="assets/images/landscape.png" width="100%" alt="App Landscape">
 
 <h1>
-   <img src="assets/images/icon@1x.png" width="50" height="50" alt="App Icon" style="vertical-align: middle">
-   Marca Tu Ritmo 🏃‍♂️
+  <img src="assets/images/icon@1x.png" width="40" alt="App Icon">&nbsp;&nbsp;Marca Tu Ritmo 🏃‍♂️
 </h1>
 
 A modern fitness tracking app that helps you track your workouts, monitor your progress, and maintain your fitness journey. Built with React Native and Expo.
