@@ -12,27 +12,13 @@ A modern fitness tracking app that helps you track your workouts, monitor your p
 
 ## Screenshots
 
-<div style="display: flex; flex-direction: row; gap: 20px; margin-bottom: 20px;">
-  <div>
-    <h3>Home Screen</h3>
-    <img src="assets/images/home-screen.png" width="300" alt="Home Screen">
-  </div>
-  <div>
-    <h3>Workout Logging</h3>
-    <img src="assets/images/workout-logs.png" width="300" alt="Workout Logging">
-  </div>
-</div>
+| Home Screen | Workout Logging |
+|------------|----------------|
+| <img src="assets/images/home-screen.png" width="200" alt="Home Screen"> | <img src="assets/images/workout-logs.png" width="200" alt="Workout Logging"> |
 
-<div style="display: flex; flex-direction: row; gap: 20px;">
-  <div>
-    <h3>Progress Tracking</h3>
-    <img src="assets/images/progress-tracking.png" width="300" alt="Progress Tracking">
-  </div>
-  <div>
-    <h3>Settings</h3>
-    <img src="assets/images/settings.png" width="300" alt="Settings">
-  </div>
-</div>
+| Progress Tracking | Settings |
+|------------------|----------|
+| <img src="assets/images/progress-tracking.png" width="200" alt="Progress Tracking"> | <img src="assets/images/settings.png" width="200" alt="Settings"> |
 
 ## Getting Started
 
