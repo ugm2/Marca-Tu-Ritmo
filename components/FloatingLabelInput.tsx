@@ -27,10 +27,6 @@ export const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 }) => {
   const labelAnimation = useRef(new Animated.Value(value ? 1 : 0)).current;
   const [isFocused, setIsFocused] = useState(false);
-  const labelColor = labelAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(128,128,128,0.3)', 'black'],
-  });
 
   // Animate the label whenever focus or value changes
   useEffect(() => {
