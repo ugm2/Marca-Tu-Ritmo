@@ -1,4 +1,9 @@
-# Marca Tu Ritmo 🏃‍♂️
+<img src="assets/images/landscape.png" width="100%" alt="App Landscape">
+
+<h1>
+   <img src="assets/images/icon@1x.png" width="50" height="50" alt="App Icon" style="vertical-align: middle">
+   Marca Tu Ritmo 🏃‍♂️
+</h1>
 
 A modern fitness tracking app that helps you track your workouts, monitor your progress, and maintain your fitness journey. Built with React Native and Expo.
 
@@ -9,16 +14,6 @@ A modern fitness tracking app that helps you track your workouts, monitor your p
 - 📝 Log your fitness activities
 - ⚙️ Customizable settings
 - 🌙 Dark mode support
-
-## Screenshots
-
-| Home Screen | Workout Logging |
-|------------|----------------|
-| <img src="assets/images/home-screen.png" width="200" alt="Home Screen"> | <img src="assets/images/workout-logs.png" width="200" alt="Workout Logging"> |
-
-| Progress Tracking | Settings |
-|------------------|----------|
-| <img src="assets/images/progress-tracking.png" width="200" alt="Progress Tracking"> | <img src="assets/images/settings.png" width="200" alt="Settings"> |
 
 ## Getting Started
 
@@ -32,24 +27,28 @@ A modern fitness tracking app that helps you track your workouts, monitor your p
 ### Installation
 
 1. Clone the repository
-   ```bash
+
+   ```shell
    git clone [your-repo-url]
    cd Marca-Tu-Ritmo
    ```
 
 2. Install dependencies
-   ```bash
+
+   ```shell
    npm install
    ```
 
 3. Start the development server
-   ```bash
+
+   ```shell
    npx expo start
    ```
 
 ## Development Options
 
 You can run the app on:
+
 - iOS Simulator (press `i`)
 - Android Emulator (press `a`)
 - Your physical device using Expo Go (scan QR code)
