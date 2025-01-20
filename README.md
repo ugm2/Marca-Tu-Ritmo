@@ -1,50 +1,86 @@
-# Welcome to your Expo app 👋
+# Marca Tu Ritmo 🏃‍♂️
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A modern fitness tracking app that helps you track your workouts, monitor your progress, and maintain your fitness journey. Built with React Native and Expo.
 
-## Get started
+## Features
 
-1. Install dependencies
+- 📊 Track your workouts and exercises
+- 📈 Monitor your progress over time
+- 📝 Log your fitness activities
+- ⚙️ Customizable settings
+- 🌙 Dark mode support
 
+## Screenshots
+
+<div style="display: flex; flex-direction: row; gap: 20px; margin-bottom: 20px;">
+  <div>
+    <h3>Home Screen</h3>
+    <img src="assets/images/home-screen.png" width="300" alt="Home Screen">
+  </div>
+  <div>
+    <h3>Workout Logging</h3>
+    <img src="assets/images/workout-logs.png" width="300" alt="Workout Logging">
+  </div>
+</div>
+
+<div style="display: flex; flex-direction: row; gap: 20px;">
+  <div>
+    <h3>Progress Tracking</h3>
+    <img src="assets/images/progress-tracking.png" width="300" alt="Progress Tracking">
+  </div>
+  <div>
+    <h3>Settings</h3>
+    <img src="assets/images/settings.png" width="300" alt="Settings">
+  </div>
+</div>
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+- iOS Simulator or Android Emulator (optional)
+- Expo Go app on your mobile device (optional)
+
+### Installation
+
+1. Clone the repository
+   ```bash
+   git clone [your-repo-url]
+   cd Marca-Tu-Ritmo
+   ```
+
+2. Install dependencies
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Start the development server
    ```bash
-    npx expo start
+   npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Development Options
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+You can run the app on:
+- iOS Simulator (press `i`)
+- Android Emulator (press `a`)
+- Your physical device using Expo Go (scan QR code)
+- Web browser (press `w`)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Tech Stack
 
-## Get a fresh project
+- React Native
+- Expo
+- TypeScript
+- React Navigation
+- Expo Router
 
-When you're ready, run:
+## Contributing
 
-```bash
-npm run reset-project
-```
+Feel free to submit issues and enhancement requests!
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## License
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This project is licensed under the MIT License - see the LICENSE file for details.
