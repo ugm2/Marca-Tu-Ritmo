@@ -67,7 +67,7 @@ export default function SettingsScreen() {
             <SettingItem
               icon="scale"
               title="Use Metric System"
-              description="Switch between kilograms (kg) and pounds (lb)"
+              description="Switch between metric (kg, m) and imperial (lb, mi) units"
               value={settings.useMetric}
               onValueChange={(value) => updateSettings({ useMetric: value })}
             />
@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
   settingDescription: {
     fontSize: 14,
     opacity: 0.6,
-  },
+  }
 }); 

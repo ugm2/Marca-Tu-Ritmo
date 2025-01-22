@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Modal, FlatList, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, NativeSyntheticEvent, NativeScrollEvent, Animated } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Switch, Platform, Modal, FlatList, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, NativeSyntheticEvent, NativeScrollEvent, Animated, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
@@ -23,6 +23,15 @@ const WORKOUT_TYPES = [
   'Other'
 ];
 
+const MEASUREMENT_TYPES = [
+  { id: 'weight_reps', label: 'Weight & Reps' },
+  { id: 'time_only', label: 'Time Only' },
+  { id: 'distance_time', label: 'Distance & Time' },
+  { id: 'reps_only', label: 'Reps Only' }
+] as const;
+
+type MeasurementType = 'weight_reps' | 'time_only' | 'distance_time' | 'reps_only';
+
 export default function AddWorkoutScreen() {
   const params = useLocalSearchParams();
   const colorScheme = useColorScheme();
@@ -36,8 +45,13 @@ export default function AddWorkoutScreen() {
   const [notes, setNotes] = useState(params.notes as string || '');
 
   // Exercise fields
+  const [measurementType, setMeasurementType] = useState<Exercise['measurement_type']>(
+    params.measurement_type as Exercise['measurement_type'] || 'weight_reps'
+  );
   const [weight, setWeight] = useState(params.weight as string || '');
   const [reps, setReps] = useState(params.reps as string || '');
+  const [distance, setDistance] = useState(params.distance as string || '');
+  const [time, setTime] = useState(params.time as string || '');
 
   // WOD fields
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -163,42 +177,69 @@ export default function AddWorkoutScreen() {
   };
 
   const handleSubmit = async () => {
-    try {
-      const workoutData = {
-        ...(params.workoutId ? { id: Number(params.workoutId) } : {}),
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter a workout name');
+      return;
+    }
+
+    // Debug logging
+    console.log('Submit params:', {
+      id: params.id,
+      editMode: params.editMode,
+      workoutType: params.workoutType
+    });
+
+    if (isWOD) {
+      // Handle WOD submission
+      const workout: WOD = {
         name,
-        date: selectedDate.toISOString().split('T')[0],
-        notes,
+        type: 'wod',
+        date: selectedDate.toISOString(),
+        notes: notes || '',
+        description: description || '',
+        result: result || '',
       };
 
-      if (isWOD) {
-        const wodData = {
-          ...workoutData,
-          type: 'wod' as const,
-          description,
-          result,
-        };
-        if (params.editMode === 'true' && 'id' in wodData) {
-          await updateWOD(wodData);
+      try {
+        if (params.id) {
+          console.log('Updating WOD with ID:', params.id);
+          await updateWOD({ ...workout, id: parseInt(params.id as string) });
         } else {
-          await addWOD(wodData);
+          console.log('Adding new WOD');
+          await addWOD(workout);
         }
-      } else {
-        const exerciseData = {
-          ...workoutData,
-          type: 'exercise' as const,
-          weight,
-          reps,
-        };
-        if (params.editMode === 'true' && 'id' in exerciseData) {
-          await updateExercise(exerciseData);
-        } else {
-          await addExercise(exerciseData);
-        }
+        router.back();
+      } catch (error) {
+        console.error('Error saving WOD:', error);
+        Alert.alert('Error', 'Failed to save workout');
       }
-      router.back();
-    } catch (error) {
-      console.error('Error saving workout:', error);
+    } else {
+      // Handle Exercise submission
+      const exercise: Exercise = {
+        name,
+        type: 'exercise',
+        measurement_type: measurementType,
+        weight: weight || undefined,
+        reps: reps || undefined,
+        time: time ? timeToSeconds(time).toString() : undefined,
+        distance: distance || undefined,
+        notes: notes || '',
+        date: selectedDate.toISOString(),
+      };
+
+      try {
+        if (params.id) {
+          console.log('Updating Exercise with ID:', params.id);
+          await updateExercise({ ...exercise, id: parseInt(params.id as string) });
+        } else {
+          console.log('Adding new Exercise');
+          await addExercise(exercise);
+        }
+        router.back();
+      } catch (error) {
+        console.error('Error saving exercise:', error);
+        Alert.alert('Error', 'Failed to save workout');
+      }
     }
   };
 
@@ -336,9 +377,9 @@ export default function AddWorkoutScreen() {
     );
   };
 
-  const handleInputFocus = (fieldName: string, y: number) => {
-    setFocusedField(fieldName); // Highlight focused field
-    scrollViewRef.current?.scrollTo({ y, animated: true });
+  const handleInputFocus = (fieldName: string, scrollPosition: number) => {
+    setFocusedField(fieldName);
+    scrollViewRef.current?.scrollTo({ y: scrollPosition, animated: true });
   };
 
   const handleKeyboardDismiss = () => {
@@ -355,6 +396,103 @@ export default function AddWorkoutScreen() {
       keyboardHideListener.remove();
     };
   }, []);
+
+  const renderExerciseFields = () => {
+    return (
+      <>
+        <View style={styles.formRow}>
+          <TextInput
+            style={[
+              styles.input,
+              { color: Colors[colorScheme ?? 'light'].text },
+              focusedField === 'weight' && styles.focusedInput
+            ]}
+            placeholder="Weight"
+            placeholderTextColor={colors.tabIconDefault}
+            value={weight}
+            onChangeText={setWeight}
+            keyboardType="decimal-pad"
+            onFocus={() => handleInputFocus('weight', 100)}
+            onBlur={() => setFocusedField(null)}
+          />
+        </View>
+
+        <View style={styles.formRow}>
+          <TextInput
+            style={[
+              styles.input,
+              { color: Colors[colorScheme ?? 'light'].text },
+              focusedField === 'reps' && styles.focusedInput
+            ]}
+            placeholder="Reps"
+            placeholderTextColor={colors.tabIconDefault}
+            value={reps}
+            onChangeText={setReps}
+            keyboardType="number-pad"
+            onFocus={() => handleInputFocus('reps', 200)}
+            onBlur={() => setFocusedField(null)}
+          />
+        </View>
+
+        <View style={styles.formRow}>
+          <TextInput
+            style={[
+              styles.input,
+              { color: Colors[colorScheme ?? 'light'].text },
+              focusedField === 'time' && styles.focusedInput
+            ]}
+            placeholder="Time (mm:ss)"
+            placeholderTextColor={colors.tabIconDefault}
+            value={time}
+            onChangeText={setTime}
+            onFocus={() => handleInputFocus('time', 300)}
+            onBlur={() => setFocusedField(null)}
+          />
+        </View>
+
+        <View style={styles.formRow}>
+          <TextInput
+            style={[
+              styles.input,
+              { color: Colors[colorScheme ?? 'light'].text },
+              focusedField === 'distance' && styles.focusedInput
+            ]}
+            placeholder="Distance"
+            placeholderTextColor={colors.tabIconDefault}
+            value={distance}
+            onChangeText={setDistance}
+            keyboardType="decimal-pad"
+            onFocus={() => handleInputFocus('distance', 400)}
+            onBlur={() => setFocusedField(null)}
+          />
+        </View>
+      </>
+    );
+  };
+
+  // Add this helper function
+  const determineMeasurementType = (weight: string, reps: string, time: string, distance: string): string => {
+    const hasWeight = weight.trim() !== '';
+    const hasReps = reps.trim() !== '';
+    const hasTime = time.trim() !== '';
+    const hasDistance = distance.trim() !== '';
+
+    if (hasWeight && hasReps) return 'weight_reps';
+    if (hasTime && hasDistance) return 'distance_time';
+    if (hasTime && !hasDistance) return 'time_only';
+    if (hasReps && !hasWeight) return 'reps_only';
+    return '';
+  };
+
+  const timeToSeconds = (time: string): number => {
+    if (!time) return 0;
+    const [minutes = '0', seconds = '0'] = time.split(':').map(part => part.trim());
+    const mins = parseInt(minutes);
+    const secs = parseInt(seconds);
+    if (isNaN(mins) || isNaN(secs)) return 0;
+    console.log('Converting time:', time, 'to seconds:', mins * 60 + secs);
+    return mins * 60 + secs;
+  };
 
   return (
     <KeyboardAvoidingView
@@ -458,38 +596,7 @@ export default function AddWorkoutScreen() {
                 </>
               ) : (
                 <>
-                  <View style={styles.formRow}>
-                    <FloatingLabelInput
-                      label="Weight"
-                      style={[
-                        styles.input,
-                        { color: Colors[colorScheme ?? 'light'].text },
-                        focusedField === 'weight' && styles.focusedInput
-                      ]}
-                      value={weight}
-                      onChangeText={setWeight}
-                      placeholderTextColor={colors.tabIconDefault}
-                      keyboardType="numeric"
-                      onFocus={() => handleInputFocus('weight', 300)}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </View>
-
-                  <View style={styles.formRow}>
-                    <FloatingLabelInput
-                      label="Reps"
-                      style={[
-                        styles.input,
-                        { color: Colors[colorScheme ?? 'light'].text },
-                        focusedField === 'reps' && styles.focusedInput
-                      ]}
-                      value={reps}
-                      onChangeText={setReps}
-                      placeholderTextColor={colors.tabIconDefault}
-                      onFocus={() => handleInputFocus('reps', 400)}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </View>
+                  {renderExerciseFields()}
                 </>
               )}
 
@@ -504,7 +611,6 @@ export default function AddWorkoutScreen() {
                   ]}
                   value={notes}
                   onChangeText={setNotes}
-                  placeholderTextColor={colors.tabIconDefault}
                   multiline
                   numberOfLines={4}
                   onFocus={() => handleInputFocus('notes', 500)}
@@ -652,5 +758,34 @@ const styles = StyleSheet.create({
   focusedInput: {
     borderBottomColor: Colors.light.primary,
     borderBottomWidth: Platform.OS === 'ios' ? 0.5 : 1,
+  },
+  measurementTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  measurementTypeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(128,128,128,0.1)',
+  },
+  measurementTypeText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  halfInput: {
+    flex: 1,
+  },
+  errorText: {
+    color: 'red',
+    marginTop: 8,
+    textAlign: 'center',
   },
 }); 

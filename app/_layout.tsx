@@ -8,6 +8,8 @@ import { useColorScheme } from 'react-native';
 import { SettingsProvider } from '../contexts/SettingsContext';
 import { PortalProvider } from '@gorhom/portal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { migrateDatabase } from '../app/utils/db';
+import db from './utils/db';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -38,6 +40,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Migrate the database instead of resetting it
+        await migrateDatabase();
+        await db.debugDatabase();
+        await db.initializeDatabase();
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+
+    initializeApp();
+  }, []);
 
   return (
     <SettingsProvider>

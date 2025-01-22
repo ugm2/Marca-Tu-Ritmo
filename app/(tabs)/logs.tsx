@@ -6,14 +6,15 @@ import { ThemedView } from '../../components/ThemedView';
 import Colors from '../../constants/Colors';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Exercise, WOD, getAllLogs, deleteWOD, deleteExercise } from '../../app/utils/db';
+import { Exercise, WOD, getAllLogs, deleteExercise, deleteWOD } from '../../app/utils/db';
 import { useRouter } from 'expo-router';
 import { format, subDays, subMonths } from 'date-fns';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Portal } from '@gorhom/portal';
 import { AnimatedTabScreen } from '../../components/AnimatedTabScreen';
 
-type WorkoutLog = (Exercise | WOD) & { type: 'exercise' | 'wod' };
+type WorkoutLog = Exercise | WOD;
+
 type DateFilter = 'all' | 'week' | 'month' | '3months';
 type SortOrder = 'newest' | 'oldest';
 type WorkoutTypeFilter = 'all' | 'wod' | 'exercise';
@@ -84,36 +85,47 @@ export default function LogsScreen() {
     try {
       setIsLoading(true);
       const allLogs = await getAllLogs();
-      
       const typedLogs: WorkoutLog[] = allLogs.map(log => {
-        const baseLog = {
-          id: log.id,
-          name: log.name,
-          date: log.date,
-          notes: log.notes
-        };
-        
         if (log.type === 'wod') {
           return {
-            ...baseLog,
+            id: log.id,
+            name: log.name,
+            date: log.date,
+            notes: log.notes || '',
             type: 'wod' as const,
-            description: log.description,
-            result: log.result
+            description: log.description || '',
+            result: log.result || ''
           };
         } else {
+          // Determine measurement type based on filled fields
+          let measurement_type: Exercise['measurement_type'];
+          if (log.weight && log.reps) {
+            measurement_type = 'weight_reps';
+          } else if (log.time && log.distance) {
+            measurement_type = 'distance_time';
+          } else if (log.time) {
+            measurement_type = 'time_only';
+          } else if (log.reps) {
+            measurement_type = 'reps_only';
+          } else {
+            measurement_type = 'weight_reps'; // fallback
+          }
+
           return {
-            ...baseLog,
+            id: log.id,
+            name: log.name,
+            date: log.date,
+            notes: log.notes || '',
             type: 'exercise' as const,
-            weight: log.weight,
-            reps: log.reps
+            measurement_type,
+            weight: log.weight || '',
+            reps: log.reps || '',
+            time: log.time || '',
+            distance: log.distance || '',
           };
         }
       });
-
-      const sortedLogs = typedLogs.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
+      const sortedLogs = typedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setLogs(sortedLogs);
       setFilteredLogs(applyFilters(sortedLogs));
     } catch (error) {
@@ -158,18 +170,53 @@ export default function LogsScreen() {
     setFilteredLogs(applyFilters(filtered));
   }, [logs, applyFilters]);
 
-  const formatWeight = (weight: number | string | undefined) => {
+  const formatTime = (time: string | undefined) => {
+    if (!time) return '';
+    const seconds = parseInt(time);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const formatWeight = (weight: string | undefined) => {
     if (!weight) return '';
-    const numWeight = typeof weight === 'string' ? parseFloat(weight) : weight;
+    const numWeight = parseFloat(weight);
     return settings.useMetric ? `${numWeight}kg` : `${Math.round(numWeight * 2.20462)}lb`;
   };
+
+  const formatDistance = useCallback((meters: string | undefined): string => {
+    if (!meters) return '';
+    const distance = parseFloat(meters);
+    if (settings.useMetric) {
+      return `${distance}m`;
+    } else {
+      // Convert meters to miles (1 mile = 1609.34 meters)
+      const miles = distance / 1609.34;
+      return `${miles.toFixed(2)}mi`;
+    }
+  }, [settings.useMetric]);
+
+  const renderExerciseDetails = useCallback((exercise: Exercise) => {
+    switch (exercise.measurement_type) {
+      case 'weight_reps':
+        return <ThemedText style={styles.exerciseDetails}>{`${formatWeight(exercise.weight)} - ${exercise.reps} reps`}</ThemedText>;
+      case 'time_only':
+        return <ThemedText style={styles.exerciseDetails}>{`Time: ${formatTime(exercise.time)}`}</ThemedText>;
+      case 'distance_time':
+        return <ThemedText style={styles.exerciseDetails}>{`${formatDistance(exercise.distance)} - ${formatTime(exercise.time)}`}</ThemedText>;
+      case 'reps_only':
+        return <ThemedText style={styles.exerciseDetails}>{`${exercise.reps} reps`}</ThemedText>;
+      default:
+        return <ThemedText style={styles.exerciseDetails}>{''}</ThemedText>;
+    }
+  }, [formatWeight, formatTime, formatDistance]);
 
   const handleEdit = (log: WorkoutLog) => {
     if (!log.id) return;
     
     const params = {
       editMode: 'true',
-      workoutId: log.id.toString(),
+      id: log.id.toString(),
       workoutType: log.type,
       name: log.name,
       notes: log.notes || '',
@@ -181,7 +228,10 @@ export default function LogsScreen() {
           }
         : {
             weight: (log as Exercise).weight?.toString() || '',
-            reps: (log as Exercise).reps?.toString() || ''
+            reps: (log as Exercise).reps?.toString() || '',
+            time: (log as Exercise).time?.toString() || '',
+            distance: (log as Exercise).distance?.toString() || '',
+            measurement_type: (log as Exercise).measurement_type || ''
           }
       )
     };
@@ -254,16 +304,7 @@ export default function LogsScreen() {
               </>
             ) : (
               <View style={styles.exerciseDetails}>
-                {(log as Exercise).weight && (
-                  <ThemedText style={styles.exerciseDetail}>
-                    Weight: {formatWeight((log as Exercise).weight)}
-                  </ThemedText>
-                )}
-                {(log as Exercise).reps && (
-                  <ThemedText style={styles.exerciseDetail}>
-                    Reps: {(log as Exercise).reps}
-                  </ThemedText>
-                )}
+                {renderExerciseDetails(log as Exercise)}
               </View>
             )}
             {log.notes && (
@@ -707,12 +748,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   exerciseDetails: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  exerciseDetail: {
     fontSize: 14,
     opacity: 0.8,
+    marginTop: 4,
   },
   notes: {
     fontSize: 14,
